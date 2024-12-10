@@ -12,11 +12,14 @@ dependencies:
     sdk: flutter
   flutter_map: ^7.0.2
   flutter_sound: ^9.17.8
+  geolocator: ^13.0.2
   google_maps: ^8.1.1
+  google_maps_flutter: ^2.10.0
   google_maps_flutter_web: ^0.5.10
   latlong2: ^0.9.1
   maps_launcher: ^2.2.1
   permission_handler: ^10.2.0
+  spotify_sdk: ^3.0.2
   webview_flutter: ^4.10.0
 
 dev_dependencies:
