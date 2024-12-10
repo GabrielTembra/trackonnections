@@ -4,6 +4,8 @@ import 'package:spotify_sdk/spotify_sdk.dart';
 import 'package:spotify_sdk/models/player_state.dart';
 import 'package:spotify_sdk/models/track.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:uni_links/uni_links.dart';
+import 'dart:async';
 
 void main() {
   runApp(const TrackConnectionsApp());
@@ -37,18 +39,68 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
   bool _isConnected = false;
   String _currentTrack = 'Nenhuma música tocando';
 
+  StreamSubscription? _uniLinksSubscription;
+
   @override
   void initState() {
     super.initState();
+    _initUniLinks();
     _connectToSpotify();
   }
 
-  // Conectar ao Spotify
+  @override
+  void dispose() {
+    _uniLinksSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// Inicializa o listener para os Deep Links
+  Future<void> _initUniLinks() async {
+    // Para links recebidos enquanto o app já está aberto
+    _uniLinksSubscription = uriLinkStream.listen((Uri? uri) {
+      if (uri != null) {
+        _handleDeepLink(uri);
+      }
+    }, onError: (err) {
+      print('Erro ao processar Deep Link: $err');
+    });
+
+    // Para links que abriram o app desde o início
+    try {
+      final Uri? initialUri = await getInitialUri();
+      if (initialUri != null) {
+        _handleDeepLink(initialUri);
+      }
+    } catch (e) {
+      print('Erro ao obter o Deep Link inicial: $e');
+    }
+  }
+
+  /// Trata os Deep Links recebidos
+  void _handleDeepLink(Uri uri) {
+    if (uri.host == 'callback') {
+      print('Deep Link recebido: $uri');
+
+      // Processa os dados do URI (se necessário)
+      final token = uri.queryParameters['token']; // Exemplo de extração de parâmetro
+      print('Token recebido: $token');
+
+      // Atualiza o estado para refletir que a conexão foi bem-sucedida
+      setState(() {
+        _isConnected = true; // Marca como conectado ao Spotify
+      });
+
+      // Realiza qualquer ação necessária após a conexão, por exemplo:
+      _getCurrentTrack(); // Obtém a música atual ou atualiza algum outro estado.
+    }
+  }
+
+  /// Conecta ao Spotify
   Future<void> _connectToSpotify() async {
     try {
       bool result = await SpotifySdk.connectToSpotifyRemote(
-        clientId: 'b0620bb044c64d529f747bb52b7233c2', // Substitua por seu Client ID
-        redirectUrl: 'https://trackonnections.com/callback', // Substitua pela Redirect URI
+        clientId: 'b0620bb044c64d529f747bb52b7233c2', // Substitua pelo seu Client ID
+        redirectUrl: 'trackonnections://callback', // Esquema de redirecionamento atualizado
       );
       setState(() {
         _isConnected = result;
@@ -58,7 +110,7 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
     }
   }
 
-  // Obter informações da música atual
+  /// Obtém informações da música atual
   Future<void> _getCurrentTrack() async {
     if (_isConnected) {
       try {

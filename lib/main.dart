@@ -19,7 +19,7 @@ class TrackConnectionsApp extends StatelessWidget {
       ),
       initialRoute: '/login',
       routes: {
-        '/login': (context) => TrackConnectionsApp(),
+        '/login': (context) => Telalogin(),
         // Adicione outras rotas aqui conforme necessário
       },
     );
