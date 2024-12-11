@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_appauth/flutter_appauth.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const SpotifyMusicRecognitionApp());
@@ -63,29 +62,33 @@ class _SpotifyMusicRecognitionScreenState
 
   Future<void> _loginSpotify() async {
     const clientId = 'b0620bb044c64d529f747bb52b7233c2';
-    const redirectUri = 'https://your-redirect-uri.com/callback';
+    const redirectUri = 'trackonnections://callback'; // Alterar para a URI correta
     const authorizationEndpoint =
         'https://accounts.spotify.com/authorize';
     const tokenEndpoint = 'https://accounts.spotify.com/api/token';
 
-    final result = await _appAuth.authorizeAndExchangeCode(
-      AuthorizationTokenRequest(
+    try {
+      final AuthorizationTokenRequest request = AuthorizationTokenRequest(
         clientId,
         redirectUri,
         scopes: ['user-read-playback-state', 'playlist-read-private'],
-        authorizationEndpoint: authorizationEndpoint,
-        tokenEndpoint: tokenEndpoint,
-      ),
-    );
+      );
 
-    if (result.accessToken != null) {
-      _accessToken = result.accessToken;
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      prefs.setString('spotify_access_token', _accessToken!);
-      _getUserPlaylists(_accessToken!);
-    } else {
+      final result = await _appAuth.authorizeAndExchangeCode(request);
+
+      if (result.accessToken != null) {
+        _accessToken = result.accessToken;
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setString('spotify_access_token', _accessToken!);
+        _getUserPlaylists(_accessToken!);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro na autenticação com o Spotify.')),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro na autenticação com o Spotify.')),
+        const SnackBar(content: Text('Erro ao tentar autenticar.')),
       );
     }
   }
@@ -133,7 +136,7 @@ class _SpotifyMusicRecognitionScreenState
                 child: ElevatedButton(
                   onPressed: _loginSpotify,
                   style: ElevatedButton.styleFrom(
-                    primary: Colors.green,
+                    backgroundColor: Colors.green,
                   ),
                   child: const Text(
                     'Login com Spotify',
@@ -175,3 +178,4 @@ class _SpotifyMusicRecognitionScreenState
     );
   }
 }
+
