@@ -1,171 +1,164 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:spotify/spotify.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:flutter_web_auth/flutter_web_auth.dart';  // Para autenticação
-import 'package:http/http.dart' as http; // Para requisições HTTP
-import 'package:trackonnections/telaMapa.dart';  // Sua tela de mapa
+import 'package:http/http.dart' as http;
+import 'package:app_links/app_links.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';  // Importando o pacote url_launcher
 
-void main() {
-  runApp(const TrackConnectionsApp());
-}
-
-class TrackConnectionsApp extends StatelessWidget {
-  const TrackConnectionsApp({super.key});
+class SpotifyMusicRecognitionApp extends StatelessWidget {
+  const SpotifyMusicRecognitionApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'TrackConnections',
+      title: 'Spotify Music Recognition',
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
-      home: const MusicTrackScreen(accessToken: null,),
+      home: const SpotifyMusicRecognitionScreen(),
     );
   }
 }
 
-class MusicTrackScreen extends StatefulWidget {
-  const MusicTrackScreen({super.key, required accessToken});
+class SpotifyMusicRecognitionScreen extends StatefulWidget {
+  const SpotifyMusicRecognitionScreen({super.key});
 
   @override
-  State<MusicTrackScreen> createState() => _MusicTrackScreenState();
+  State<SpotifyMusicRecognitionScreen> createState() =>
+      _SpotifyMusicRecognitionScreenState();
 }
 
-class _MusicTrackScreenState extends State<MusicTrackScreen> {
-  late SpotifyApi _spotify;
-  String _currentTrack = 'Nenhuma música tocando';
+class _SpotifyMusicRecognitionScreenState
+    extends State<SpotifyMusicRecognitionScreen> {
+  String _currentTrack = 'Nenhuma música reconhecida';
   String _artistName = 'Desconhecido';
-  LatLng _currentLocation = const LatLng(-23.5505, -46.6333); // São Paulo
-  String _accessToken = '';
+  String _trackImageUrl = '';
+  late final AppLinks _appLinks;
 
   @override
   void initState() {
     super.initState();
-    _authenticateSpotify(); // Iniciar o processo de autenticação ao iniciar
-    _getCurrentLocation();  // Obter localização
+    _appLinks = AppLinks();
+    _checkSpotifyAuth();
+    _listenForSpotifyLink();
   }
 
-  // Função de autenticação com Spotify usando OAuth
-  Future<void> _authenticateSpotify() async {
-    try {
-      // URL de autenticação do Spotify com o URI de redirecionamento correto
-      final authUrl = Uri.parse(
-        'https://accounts.spotify.com/authorize?response_type=code&client_id=b0620bb044c64d529f747bb52b7233c2&redirect_uri=trackonnections://callback&scope=user-read-playback-state user-read-currently-playing',
-      );
+  Future<void> _checkSpotifyAuth() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? accessToken = prefs.getString('spotify_access_token');
 
-      // Usando o Flutter Web Auth para autenticar o usuário
-      final result = await FlutterWebAuth.authenticate(
-        url: authUrl.toString(),
-        callbackUrlScheme: 'trackonnections', // A URL de esquema personalizada
-      );
-
-      // Pegue o código de autenticação da URL
-      final code = Uri.parse(result).queryParameters['code'];
-
-      // Agora, você deve trocar o código por um token de acesso
-      final tokenResponse = await _getAccessToken(code!);
-
-      setState(() {
-        _accessToken = tokenResponse['access_token'];
-      });
-
-      // Agora, o token está disponível para fazer chamadas na API do Spotify
-      _spotify = SpotifyApi(SpotifyApiCredentials(
-        'b0620bb044c64d529f747bb52b7233c2', // Seu clientId
-        '6d197dce2d0a4874a49de7ddcea781b7', // Seu clientSecret
-      ));
-
-      _getCurrentTrack();
-    } catch (e) {
-      print('Erro de autenticação com Spotify: $e');
-    }
-  }
-
-  // Função para trocar o código de autenticação por um token de acesso
-  Future<Map<String, dynamic>> _getAccessToken(String code) async {
-    final tokenUrl = Uri.parse('https://accounts.spotify.com/api/token');
-    final response = await http.post(
-      tokenUrl,
-      body: {
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': 'trackonnections://callback', // Usando o mesmo URI registrado
-        'client_id': 'b0620bb044c64d529f747bb52b7233c2',
-        'client_secret': '6d197dce2d0a4874a49de7ddcea781b7',
-      },
-    );
-
-    // Verifica se a resposta foi bem-sucedida
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
+    if (accessToken == null) {
+      // Se não tiver token, faz login
+      _loginSpotify();
     } else {
-      throw Exception('Falha ao obter o token de acesso');
+      // Se já tiver token, tenta pegar a música tocando
+      _getCurrentlyPlayingTrack(accessToken);
     }
   }
 
-  // Função para pegar a música atual
-  Future<void> _getCurrentTrack() async {
-    if (_accessToken.isNotEmpty) {
-      try {
-        final credentials = SpotifyApiCredentials(
-          'b0620bb044c64d529f747bb52b7233c2', // Seu clientId
-          '6d197dce2d0a4874a49de7ddcea781b7', // Seu clientSecret
-        );
-        final spotify = SpotifyApi(credentials);
-        final currentlyPlaying = await spotify.player.currentlyPlaying();
+  Future<void> _loginSpotify() async {
+    final clientId = 'b0620bb044c64d529f747bb52b7233c2'; // Seu Client ID do Spotify
+    final redirectUri = 'trackonnections://callback'; // O mesmo redirect URI configurado no Spotify Developer
+    final authUrl =
+        'https://accounts.spotify.com/authorize?response_type=code&client_id=$clientId&scope=user-read-playback-state&redirect_uri=$redirectUri';
 
-        if (currentlyPlaying != null && currentlyPlaying.item != null) {
-          final track = currentlyPlaying.item as Track;
-          setState(() {
-            _currentTrack = track.name!;
-            _artistName = track.artists?.first.name ?? 'Desconhecido';
-          });
-        } else {
-          setState(() {
-            _currentTrack = 'Nenhuma música tocando';
-            _artistName = 'Desconhecido';
-          });
-        }
-      } catch (e) {
-        print('Erro ao obter a música atual: $e');
+    // Use launchUrl (melhor abordagem para deep linking)
+    final uri = Uri.parse(authUrl);
+    if (await canLaunch(uri.toString())) {
+      await launch(uri.toString());
+    } else {
+      throw 'Não foi possível abrir o link de autenticação do Spotify';
+    }
+  }
+
+  // Função para processar o link de redirecionamento após o login
+  Future<void> _listenForSpotifyLink() async {
+    // Escuta os links profundos
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) {
+        _handleRedirect(uri);
+      }
+    });
+
+    _appLinks.uriLinkStream.listen((uri) {
+      if (uri != null) {
+        _handleRedirect(uri);
+      }
+    });
+  }
+
+  Future<void> _handleRedirect(Uri uri) async {
+    if (uri.queryParameters.containsKey('code')) {
+      final authCode = uri.queryParameters['code'];
+
+      if (authCode != null) {
+        // Trocar o código de autorização por um token de acesso
+        await _exchangeAuthCodeForToken(authCode);
       }
     }
   }
 
-  Future<void> _getCurrentLocation() async {
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
-      });
-    } catch (e) {
-      print('Erro ao obter a localização: $e');
+  Future<void> _exchangeAuthCodeForToken(String authCode) async {
+    final clientId = 'b0620bb044c64d529f747bb52b7233c2'; // Seu Client ID
+    final clientSecret = '6d197dce2d0a4874a49de7ddcea781b7'; // Seu Client Secret
+    final redirectUri = 'trackonnections://callback'; // O mesmo redirect URI configurado no Spotify
+    final tokenUrl = 'https://accounts.spotify.com/api/token';
+
+    final response = await http.post(
+      Uri.parse(tokenUrl),
+      headers: {
+        'Authorization': 'Basic ' +
+            base64Encode(utf8.encode('$clientId:$clientSecret')),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        'code': authCode,
+        'redirect_uri': redirectUri,
+        'grant_type': 'authorization_code',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      String accessToken = data['access_token'];
+
+      // Salva o token de acesso no SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.setString('spotify_access_token', accessToken);
+
+      // Obtém a música tocando com o token
+      _getCurrentlyPlayingTrack(accessToken);
+    } else {
+      print('Erro ao trocar o código por token: ${response.statusCode}');
     }
   }
 
-  // Função para abrir a tela do mapa
-  void _openMap() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MusicMapScreen(
-          currentLocation: _currentLocation,
-          musicLocations: [
-            {'location': _currentLocation, 'name': 'Música Atual'},
-          ],
-        ),
-      ),
+  Future<void> _getCurrentlyPlayingTrack(String accessToken) async {
+    final response = await http.get(
+      Uri.parse('https://api.spotify.com/v1/me/player/currently-playing'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
     );
-  }
 
-  // Função para voltar à tela anterior após autenticação
-  void _navigateBack() {
-    Navigator.pop(context); // Voltar para a tela anterior
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data != null && data['item'] != null) {
+        setState(() {
+          _currentTrack = data['item']['name'] ?? 'Nenhuma música reconhecida';
+          _artistName = data['item']['artists'][0]['name'] ?? 'Desconhecido';
+          _trackImageUrl = data['item']['album']['images'][0]['url'] ?? '';
+        });
+      } else {
+        setState(() {
+          _currentTrack = 'Nenhuma música reconhecida';
+          _artistName = 'Desconhecido';
+        });
+      }
+    } else {
+      print('Erro ao obter a música tocando: ${response.statusCode}');
+    }
   }
 
   @override
@@ -177,66 +170,39 @@ class _MusicTrackScreenState extends State<MusicTrackScreen> {
           children: const [
             Icon(Icons.music_note, color: Colors.white),
             SizedBox(width: 8),
-            Text('Música no Local Atual'),
+            Text('Reconhecimento de Música do Spotify'),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Center(
-              child: Column(
-                children: [
-                  Text(
-                    'Música Tocando: $_currentTrack',
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    'Artista: $_artistName',
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 20,
-                      color: Colors.deepPurple[900],
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  ElevatedButton(
-                    onPressed: () {
-                      _authenticateSpotify(); // Chama a função de autenticação
-                    },
-                    child: const Text('Conectar ao Spotify'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  ElevatedButton(
-                    onPressed: _openMap,
-                    child: const Text('Abrir Mapa'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  ElevatedButton(
-                    onPressed: _navigateBack, // Voltar para a tela anterior
-                    child: const Text('Voltar'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                  ),
-                ],
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            if (_trackImageUrl.isNotEmpty)
+              Image.network(
+                _trackImageUrl,
+                height: 200,
+                width: 200,
+                fit: BoxFit.cover,
+              ),
+            const SizedBox(height: 15),
+            Text(
+              'Música: $_currentTrack',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              'Artista: $_artistName',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.deepPurple[900],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
