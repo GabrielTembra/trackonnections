@@ -1,11 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:maps_launcher/maps_launcher.dart';
-import 'package:spotify_sdk/spotify_sdk.dart';
-import 'package:spotify_sdk/models/player_state.dart';
-import 'package:spotify_sdk/models/track.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:uni_links/uni_links.dart';
-import 'dart:async';
+import 'package:spotify/spotify.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_web_auth/flutter_web_auth.dart';  // Para autenticação
+import 'package:http/http.dart' as http; // Para requisições HTTP
+import 'package:trackonnections/telaMapa.dart';  // Sua tela de mapa
 
 void main() {
   runApp(const TrackConnectionsApp());
@@ -22,111 +22,150 @@ class TrackConnectionsApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
-      home: const MusicMapScreen(),
+      home: const MusicTrackScreen(accessToken: null,),
     );
   }
 }
 
-class MusicMapScreen extends StatefulWidget {
-  const MusicMapScreen({super.key});
+class MusicTrackScreen extends StatefulWidget {
+  const MusicTrackScreen({super.key, required accessToken});
 
   @override
-  State<MusicMapScreen> createState() => _MusicMapScreenState();
+  State<MusicTrackScreen> createState() => _MusicTrackScreenState();
 }
 
-class _MusicMapScreenState extends State<MusicMapScreen> {
-  final LatLng _initialLocation = const LatLng(-23.5505, -46.6333); // São Paulo
-  bool _isConnected = false;
+class _MusicTrackScreenState extends State<MusicTrackScreen> {
+  late SpotifyApi _spotify;
   String _currentTrack = 'Nenhuma música tocando';
-
-  StreamSubscription? _uniLinksSubscription;
+  String _artistName = 'Desconhecido';
+  LatLng _currentLocation = const LatLng(-23.5505, -46.6333); // São Paulo
+  String _accessToken = '';
 
   @override
   void initState() {
     super.initState();
-    _initUniLinks();
-    _connectToSpotify();
+    _authenticateSpotify(); // Iniciar o processo de autenticação ao iniciar
+    _getCurrentLocation();  // Obter localização
   }
 
-  @override
-  void dispose() {
-    _uniLinksSubscription?.cancel();
-    super.dispose();
-  }
-
-  /// Inicializa o listener para os Deep Links
-  Future<void> _initUniLinks() async {
-    // Para links recebidos enquanto o app já está aberto
-    _uniLinksSubscription = uriLinkStream.listen((Uri? uri) {
-      if (uri != null) {
-        _handleDeepLink(uri);
-      }
-    }, onError: (err) {
-      print('Erro ao processar Deep Link: $err');
-    });
-
-    // Para links que abriram o app desde o início
+  // Função de autenticação com Spotify usando OAuth
+  Future<void> _authenticateSpotify() async {
     try {
-      final Uri? initialUri = await getInitialUri();
-      if (initialUri != null) {
-        _handleDeepLink(initialUri);
-      }
-    } catch (e) {
-      print('Erro ao obter o Deep Link inicial: $e');
-    }
-  }
-
-  /// Trata os Deep Links recebidos
-  void _handleDeepLink(Uri uri) {
-    if (uri.host == 'callback') {
-      print('Deep Link recebido: $uri');
-
-      // Processa os dados do URI (se necessário)
-      final token = uri.queryParameters['token']; // Exemplo de extração de parâmetro
-      print('Token recebido: $token');
-
-      // Atualiza o estado para refletir que a conexão foi bem-sucedida
-      setState(() {
-        _isConnected = true; // Marca como conectado ao Spotify
-      });
-
-      // Realiza qualquer ação necessária após a conexão, por exemplo:
-      _getCurrentTrack(); // Obtém a música atual ou atualiza algum outro estado.
-    }
-  }
-
-  /// Conecta ao Spotify
-  Future<void> _connectToSpotify() async {
-    try {
-      bool result = await SpotifySdk.connectToSpotifyRemote(
-        clientId: 'b0620bb044c64d529f747bb52b7233c2', // Substitua pelo seu Client ID
-        redirectUrl: 'trackonnections://callback', // Esquema de redirecionamento atualizado
+      // URL de autenticação do Spotify com o URI de redirecionamento correto
+      final authUrl = Uri.parse(
+        'https://accounts.spotify.com/authorize?response_type=code&client_id=b0620bb044c64d529f747bb52b7233c2&redirect_uri=trackonnections://callback&scope=user-read-playback-state user-read-currently-playing',
       );
+
+      // Usando o Flutter Web Auth para autenticar o usuário
+      final result = await FlutterWebAuth.authenticate(
+        url: authUrl.toString(),
+        callbackUrlScheme: 'trackonnections', // A URL de esquema personalizada
+      );
+
+      // Pegue o código de autenticação da URL
+      final code = Uri.parse(result).queryParameters['code'];
+
+      // Agora, você deve trocar o código por um token de acesso
+      final tokenResponse = await _getAccessToken(code!);
+
       setState(() {
-        _isConnected = result;
+        _accessToken = tokenResponse['access_token'];
       });
+
+      // Agora, o token está disponível para fazer chamadas na API do Spotify
+      _spotify = SpotifyApi(SpotifyApiCredentials(
+        'b0620bb044c64d529f747bb52b7233c2', // Seu clientId
+        '6d197dce2d0a4874a49de7ddcea781b7', // Seu clientSecret
+      ));
+
+      _getCurrentTrack();
     } catch (e) {
-      print('Erro ao conectar ao Spotify: $e');
+      print('Erro de autenticação com Spotify: $e');
     }
   }
 
-  /// Obtém informações da música atual
+  // Função para trocar o código de autenticação por um token de acesso
+  Future<Map<String, dynamic>> _getAccessToken(String code) async {
+    final tokenUrl = Uri.parse('https://accounts.spotify.com/api/token');
+    final response = await http.post(
+      tokenUrl,
+      body: {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': 'trackonnections://callback', // Usando o mesmo URI registrado
+        'client_id': 'b0620bb044c64d529f747bb52b7233c2',
+        'client_secret': '6d197dce2d0a4874a49de7ddcea781b7',
+      },
+    );
+
+    // Verifica se a resposta foi bem-sucedida
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Falha ao obter o token de acesso');
+    }
+  }
+
+  // Função para pegar a música atual
   Future<void> _getCurrentTrack() async {
-    if (_isConnected) {
+    if (_accessToken.isNotEmpty) {
       try {
-        PlayerState? playerState = await SpotifySdk.getPlayerState();
-        Track? track = playerState?.track;
-        setState(() {
-          _currentTrack = track != null
-              ? '${track.name} - ${track.artist.name}'
-              : 'Nenhuma música tocando';
-        });
+        final credentials = SpotifyApiCredentials(
+          'b0620bb044c64d529f747bb52b7233c2', // Seu clientId
+          '6d197dce2d0a4874a49de7ddcea781b7', // Seu clientSecret
+        );
+        final spotify = SpotifyApi(credentials);
+        final currentlyPlaying = await spotify.player.currentlyPlaying();
+
+        if (currentlyPlaying != null && currentlyPlaying.item != null) {
+          final track = currentlyPlaying.item as Track;
+          setState(() {
+            _currentTrack = track.name!;
+            _artistName = track.artists?.first.name ?? 'Desconhecido';
+          });
+        } else {
+          setState(() {
+            _currentTrack = 'Nenhuma música tocando';
+            _artistName = 'Desconhecido';
+          });
+        }
       } catch (e) {
         print('Erro ao obter a música atual: $e');
       }
-    } else {
-      print('Conexão ao Spotify não estabelecida');
     }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+      });
+    } catch (e) {
+      print('Erro ao obter a localização: $e');
+    }
+  }
+
+  // Função para abrir a tela do mapa
+  void _openMap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MusicMapScreen(
+          currentLocation: _currentLocation,
+          musicLocations: [
+            {'location': _currentLocation, 'name': 'Música Atual'},
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Função para voltar à tela anterior após autenticação
+  void _navigateBack() {
+    Navigator.pop(context); // Voltar para a tela anterior
   }
 
   @override
@@ -138,70 +177,62 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
           children: const [
             Icon(Icons.music_note, color: Colors.white),
             SizedBox(width: 8),
-            Text(
-              'TrackConnections',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                color: Colors.white,
-              ),
-            ),
+            Text('Música no Local Atual'),
           ],
         ),
-        centerTitle: true,
       ),
       body: Column(
         children: [
-          Expanded(
-            child: Container(
-              color: Colors.deepPurple[100],
-              child: Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    MapsLauncher.launchCoordinates(
-                        _initialLocation.latitude, _initialLocation.longitude);
-                  },
-                  child: const Text(
-                    'Abrir Mapa',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 15),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              color: Colors.deepPurple[50],
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _currentTrack,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
-                      textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Center(
+              child: Column(
+                children: [
+                  Text(
+                    'Música Tocando: $_currentTrack',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _getCurrentTrack,
-                      child: const Text('Obter Música Atual'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        foregroundColor: Colors.white,
-                      ),
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    'Artista: $_artistName',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
+                      color: Colors.deepPurple[900],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 15),
+                  ElevatedButton(
+                    onPressed: () {
+                      _authenticateSpotify(); // Chama a função de autenticação
+                    },
+                    child: const Text('Conectar ao Spotify'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  ElevatedButton(
+                    onPressed: _openMap,
+                    child: const Text('Abrir Mapa'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  ElevatedButton(
+                    onPressed: _navigateBack, // Voltar para a tela anterior
+                    child: const Text('Voltar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

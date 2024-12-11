@@ -17,8 +17,6 @@ class MusicMapScreen extends StatefulWidget {
 
 class _MusicMapScreenState extends State<MusicMapScreen> {
   late GoogleMapController _mapController;
-
-  // Set para armazenar os marcadores
   final Set<Marker> _markers = {};
 
   @override
@@ -64,18 +62,12 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
       ),
       body: GoogleMap(
         initialCameraPosition: CameraPosition(
-          target: LatLng(-23.561684, -46.655981), // Avenida Paulista como posição inicial
+          target: widget.currentLocation,
           zoom: 15.0,
         ),
         markers: _markers, // Adiciona os marcadores ao mapa
         onMapCreated: (GoogleMapController controller) {
           _mapController = controller;
-        },
-        onTap: (LatLng position) {
-          // Exibe as coordenadas clicadas
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Local clicado: ${position.latitude}, ${position.longitude}')),
-          );
         },
       ),
     );

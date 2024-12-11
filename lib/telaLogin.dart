@@ -111,7 +111,7 @@ class LoginScreen extends StatelessWidget {
                 // Ação do botão para navegar até a tela do mapa
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const MusicMapScreen()),
+                  MaterialPageRoute(builder: (context) => const MusicTrackScreen()),
                 );
               },
               child: const Text('Entrar'),
