@@ -23,7 +23,12 @@ class SpotifyMusicRecognitionApp extends StatelessWidget {
         textTheme: const TextTheme(
           bodyLarge: TextStyle(fontFamily: 'Roboto', color: Colors.white),
           bodyMedium: TextStyle(fontFamily: 'Roboto', color: Colors.white),
-          headlineSmall: TextStyle(fontFamily: 'Roboto', fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+          headlineSmall: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
       ),
       home: const SpotifyMusicRecognitionScreen(),
@@ -62,7 +67,7 @@ class _SpotifyMusicRecognitionScreenState
 
   Future<void> _loginSpotify() async {
     const clientId = 'b0620bb044c64d529f747bb52b7233c2';
-    const redirectUri = 'trackonnections://callback'; // Alterar para a URI correta
+    const redirectUri = 'com.spotify.musicrecognition://callback'; // Nova URI
     const authorizationEndpoint =
         'https://accounts.spotify.com/authorize';
     const tokenEndpoint = 'https://accounts.spotify.com/api/token';
@@ -74,6 +79,7 @@ class _SpotifyMusicRecognitionScreenState
         scopes: ['user-read-playback-state', 'playlist-read-private'],
       );
 
+      // Realizando a troca do código de autorização
       final result = await _appAuth.authorizeAndExchangeCode(request);
 
       if (result.accessToken != null) {
@@ -178,4 +184,3 @@ class _SpotifyMusicRecognitionScreenState
     );
   }
 }
-
