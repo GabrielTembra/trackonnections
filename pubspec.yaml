@@ -8,12 +8,15 @@ environment:
 
 dependencies:
   app_links: ^6.3.2
+  auth_buttons: ^3.0.3
   flutter:
     sdk: flutter
+  flutter_appauth: ^8.0.1
   flutter_local_notifications: ^18.0.1
   flutter_map: ^7.0.2
   flutter_sound: ^9.17.8
   flutter_web_auth: ^0.6.0
+  flutter_webview_plugin: ^0.4.0
   geolocator: ^13.0.2
   google_maps: ^8.1.1
   google_maps_flutter: ^2.10.0
