@@ -116,7 +116,7 @@ class LoginScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const SpotifyMusicRecognitionApp()),
+                          builder: (context) => const YouTubeMusicScreen()),
                     );
                   },
                   style: ElevatedButton.styleFrom(

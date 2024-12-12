@@ -21,6 +21,7 @@ dependencies:
   google_maps: ^8.1.1
   google_maps_flutter: ^2.10.0
   google_maps_flutter_web: ^0.5.10
+  google_sign_in: ^6.2.2
   latlong2: ^0.9.1
   maps_launcher: ^2.2.1
   permission_handler: ^11.3.1
