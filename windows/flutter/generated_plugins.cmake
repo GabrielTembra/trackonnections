@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
+  flutter_inappwebview_windows
   geolocator_windows
   maps_launcher
   permission_handler_windows

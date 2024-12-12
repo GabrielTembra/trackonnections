@@ -36,58 +36,59 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   String? _accessToken;
 
   static const String clientId = 'b0620bb044c64d529f747bb52b7233c2';
-  static const String redirectUri = 'trackonnections://callback';  // URI personalizado
-
-  final String _authUrl =
-      'https://accounts.spotify.com/authorize?client_id=$clientId&response_type=code&redirect_uri=$redirectUri&scope=playlist-modify-public playlist-modify-private user-library-read';
+  static const String redirectUri = 'http:///callback'; // O URI de callback que o servidor Express usa
+  static const String clientSecret = '6d197dce2d0a4874a49de7ddcea781b7';
 
   // Função para iniciar o login com o Spotify
   Future<void> _launchSpotifyLogin() async {
-    try {
-      // Inicia o processo de autenticação via Web Auth
-      final result = await FlutterWebAuth.authenticate(
-        url: _authUrl,
-        callbackUrlScheme: 'trackonnections',  // Define o esquema de URL personalizado
-      );
+    final authUrl = 'https://accounts.spotify.com/authorize?'
+        'client_id=$clientId&'
+        'response_type=code&'
+        'redirect_uri=$redirectUri&'
+        'scope=user-read-playback-state%20user-read-currently-playing';
 
-      // Extrai o código de autorização do URL de retorno
-      final code = Uri.parse(result).queryParameters['code'];
+    // Usando o FlutterWebAuth para abrir o navegador e capturar o código de autorização
+    final result = await FlutterWebAuth.authenticate(
+      url: authUrl,
+      callbackUrlScheme: 'http', // O URL que o Spotify redireciona após a autenticação
+    );
 
-      if (code != null) {
-        _exchangeCodeForToken(code);
-      }
-    } catch (e) {
-      print("Erro ao autenticar: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao realizar login com Spotify.')),
-      );
+    final code = Uri.parse(result).queryParameters['code'];
+    if (code != null) {
+      _exchangeCodeForToken(code);
     }
   }
 
-  // Função para trocar o código por um token de acesso
+  // Função para trocar o código de autorização pelo token de acesso
   Future<void> _exchangeCodeForToken(String code) async {
-    final clientSecret = '6d197dce2d0a4874a49de7ddcea781b7';  // Adicione o seu client secret aqui
-    final response = await http.post(
-      Uri.parse('https://accounts.spotify.com/api/token'),
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + base64Encode(utf8.encode('$clientId:$clientSecret')),
-      },
-      body: {
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': redirectUri,
-      },
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('https://accounts.spotify.com/api/token'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + base64Encode(utf8.encode('$clientId:$clientSecret')),
+        },
+        body: {
+          'grant_type': 'authorization_code',
+          'code': code,
+          'redirect_uri': redirectUri,
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      setState(() {
-        _accessToken = data['access_token'];
-      });
-    } else {
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _accessToken = data['access_token'];
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao obter o token de acesso.')),
+        );
+      }
+    } catch (e) {
+      print("Erro ao trocar o código: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao trocar código por token.')),
+        const SnackBar(content: Text('Erro ao trocar o código por token.')),
       );
     }
   }
@@ -104,14 +105,12 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
           children: [
             ElevatedButton(
               onPressed: _launchSpotifyLogin,
-              child: const Text('Login com Spotify'),
+              child: const Text('Entrar no Spotify'),
             ),
             if (_accessToken != null)
-              ElevatedButton(
-                onPressed: () {
-                  // Criar playlist ou fazer outras ações com o token
-                },
-                child: const Text('Criar Playlist no Spotify'),
+              Text(
+                'Token de Acesso: $_accessToken',
+                style: const TextStyle(color: Colors.white, fontSize: 18),
               ),
           ],
         ),
@@ -119,5 +118,3 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
     );
   }
 }
-
-
