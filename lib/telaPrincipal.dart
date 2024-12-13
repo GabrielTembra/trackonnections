@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:spotify/spotify.dart';
+import 'package:trackonnections/telaLogin.dart'; // Importe sua tela de login
 
 void main() {
   runApp(const TrackonnectionsApp());
@@ -33,11 +34,11 @@ class SpotifyAuthScreen extends StatefulWidget {
 class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   String? _accessToken;
   SpotifyApi? _spotify;
+  List<PlaylistSimple> _playlists = [];
 
-  // Definindo as variáveis diretamente no código
   final String clientId = 'b0620bb044c64d529f747bb52b7233c2'; // Substitua pelo seu client_id
   final String clientSecret = '6d197dce2d0a4874a49de7ddcea781b7'; // Substitua pelo seu client_secret
-  final String redirectUri = 'https://trackonnections.firebaseapp.com/__/auth/handler'; // Substitua pelo seu redirect_uri
+  final String redirectUri = 'https://trackonnections.web.app'; // URL de redirecionamento configurada no Spotify
 
   /// Método para autenticar o usuário via Spotify
   Future<void> _authenticateWithSpotify() async {
@@ -45,16 +46,15 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
       final credentials = SpotifyApiCredentials(clientId, clientSecret);
       final grant = SpotifyApi.authorizationCodeGrant(credentials);
 
-      // Gerar a URL de autorização corretamente
+      // Corrigindo a passagem do escopo para um único Uri
       final authUrl = grant.getAuthorizationUrl(
-        ['user-read-private', 'user-read-email'] as Uri, // Lista de escopos
-        state: 'optionalState', // Opcional: você pode passar o parâmetro state se desejar
+        Uri.parse('https://accounts.spotify.com/authorize?scope=playlist-read-private'),
       );
 
       // Usar FlutterWebAuth para autenticação do usuário
       final result = await FlutterWebAuth.authenticate(
-        url: authUrl.toString(),  // Passando a URL gerada como String
-        callbackUrlScheme: Uri.parse(redirectUri).scheme, // Apenas o esquema, ex: "https"
+        url: authUrl.toString(),
+        callbackUrlScheme: Uri.parse(redirectUri).scheme,
       );
 
       // Extrair o código de autorização da URL de redirecionamento
@@ -74,12 +74,37 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
       final credentials = await grant.getToken(code);
       setState(() {
         _accessToken = credentials.accessToken;
-        _spotify = SpotifyApi(credentials); // Inicializar a API do Spotify apenas após o token
+        _spotify = SpotifyApi(credentials);
       });
       _showSuccessSnackbar('Login com Spotify realizado com sucesso!');
+
+      // Após a autenticação, buscar as playlists do usuário
+      await _fetchPlaylists();
+
+      // Redirecionar para a tela de login após autenticação bem-sucedida
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const Telalogin()), // Redireciona para a tela de login
+      );
     } catch (e) {
       _showErrorSnackbar('Erro ao obter o token de acesso: $e');
       print('Token Exchange Error: $e');
+    }
+  }
+
+  /// Método para buscar as playlists do usuário
+  Future<void> _fetchPlaylists() async {
+    if (_spotify != null) {
+      try {
+        // Usando o método correto para buscar as playlists
+        final playlists = await _spotify!.playlists.me.all();
+        setState(() {
+          _playlists = playlists.toList();
+        });
+      } catch (e) {
+        _showErrorSnackbar('Erro ao buscar playlists: $e');
+        print('Playlist Fetch Error: $e');
+      }
     }
   }
 
@@ -120,6 +145,18 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
+              ),
+            if (_playlists.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Text('Playlists do usuário:', style: TextStyle(color: Colors.white)),
+              ..._playlists.map((playlist) => ListTile(
+                    title: Text(playlist.name ?? 'Sem nome', style: const TextStyle(color: Colors.white)),
+                    subtitle: Text(playlist.description ?? 'Sem descrição', style: const TextStyle(color: Colors.white)),
+                  )),
+            ] else if (_accessToken != null)
+              const Text(
+                'Nenhuma playlist encontrada',
+                style: TextStyle(color: Colors.white),
               ),
           ],
         ),

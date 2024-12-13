@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:trackonnections/telaLogin.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // Importe as credenciais geradas pela FlutterFire CLI
+import 'telaLogin.dart'; // Certifique-se de que o caminho da telaLogin.dart está correto
 
-void main() {
+void main() async {
+  // Garantir que os widgets estejam inicializados
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar o Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,  // Inicialização correta com as opções do Firebase
+  );
+  
+  // Iniciar o app
   runApp(const TrackConnectionsApp());
 }
 
@@ -19,10 +30,9 @@ class TrackConnectionsApp extends StatelessWidget {
       ),
       initialRoute: '/login',
       routes: {
-        '/login': (context) => LoginScreen(),
+        '/login': (context) => LoginScreen(),  // Defina sua tela de login aqui
         // Adicione outras rotas aqui conforme necessário
       },
     );
   }
 }
-
