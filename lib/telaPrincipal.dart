@@ -1,7 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
-import 'package:http/http.dart' as http;
+import 'package:spotify/spotify.dart';
 
 void main() {
   runApp(const TrackonnectionsApp());
@@ -17,7 +16,6 @@ class TrackonnectionsApp extends StatelessWidget {
       title: 'Trackonnections',
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
         scaffoldBackgroundColor: const Color(0xFF4A148C),
       ),
       home: const SpotifyAuthScreen(),
@@ -29,68 +27,74 @@ class SpotifyAuthScreen extends StatefulWidget {
   const SpotifyAuthScreen({super.key});
 
   @override
-  _SpotifyAuthScreenState createState() => _SpotifyAuthScreenState();
+  State<SpotifyAuthScreen> createState() => _SpotifyAuthScreenState();
 }
 
 class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   String? _accessToken;
+  SpotifyApi? _spotify;
 
-  static const String clientId = 'b0620bb044c64d529f747bb52b7233c2';
-  static const String redirectUri = 'http:///callback'; // O URI de callback que o servidor Express usa
-  static const String clientSecret = '6d197dce2d0a4874a49de7ddcea781b7';
+  // Definindo as variáveis diretamente no código
+  final String clientId = 'b0620bb044c64d529f747bb52b7233c2'; // Substitua pelo seu client_id
+  final String clientSecret = '6d197dce2d0a4874a49de7ddcea781b7'; // Substitua pelo seu client_secret
+  final String redirectUri = 'https://trackonnections.firebaseapp.com/__/auth/handler'; // Substitua pelo seu redirect_uri
 
-  // Função para iniciar o login com o Spotify
-  Future<void> _launchSpotifyLogin() async {
-    final authUrl = 'https://accounts.spotify.com/authorize?'
-        'client_id=$clientId&'
-        'response_type=code&'
-        'redirect_uri=$redirectUri&'
-        'scope=user-read-playback-state%20user-read-currently-playing';
+  /// Método para autenticar o usuário via Spotify
+  Future<void> _authenticateWithSpotify() async {
+    try {
+      final credentials = SpotifyApiCredentials(clientId, clientSecret);
+      final grant = SpotifyApi.authorizationCodeGrant(credentials);
 
-    // Usando o FlutterWebAuth para abrir o navegador e capturar o código de autorização
-    final result = await FlutterWebAuth.authenticate(
-      url: authUrl,
-      callbackUrlScheme: 'http', // O URL que o Spotify redireciona após a autenticação
-    );
+      // Gerar a URL de autorização corretamente
+      final authUrl = grant.getAuthorizationUrl(
+        ['user-read-private', 'user-read-email'] as Uri, // Lista de escopos
+        state: 'optionalState', // Opcional: você pode passar o parâmetro state se desejar
+      );
 
-    final code = Uri.parse(result).queryParameters['code'];
-    if (code != null) {
-      _exchangeCodeForToken(code);
+      // Usar FlutterWebAuth para autenticação do usuário
+      final result = await FlutterWebAuth.authenticate(
+        url: authUrl.toString(),  // Passando a URL gerada como String
+        callbackUrlScheme: Uri.parse(redirectUri).scheme, // Apenas o esquema, ex: "https"
+      );
+
+      // Extrair o código de autorização da URL de redirecionamento
+      final code = Uri.parse(result).queryParameters['code'];
+      if (code != null) {
+        await _exchangeCodeForToken(code, grant);
+      }
+    } catch (e) {
+      _showErrorSnackbar('Erro durante a autenticação com o Spotify');
+      print('Authentication Error: $e');
     }
   }
 
-  // Função para trocar o código de autorização pelo token de acesso
-  Future<void> _exchangeCodeForToken(String code) async {
+  /// Troca o código de autorização pelo token de acesso
+  Future<void> _exchangeCodeForToken(String code, grant) async {
     try {
-      final response = await http.post(
-        Uri.parse('https://accounts.spotify.com/api/token'),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + base64Encode(utf8.encode('$clientId:$clientSecret')),
-        },
-        body: {
-          'grant_type': 'authorization_code',
-          'code': code,
-          'redirect_uri': redirectUri,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          _accessToken = data['access_token'];
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro ao obter o token de acesso.')),
-        );
-      }
+      final credentials = await grant.getToken(code);
+      setState(() {
+        _accessToken = credentials.accessToken;
+        _spotify = SpotifyApi(credentials); // Inicializar a API do Spotify apenas após o token
+      });
+      _showSuccessSnackbar('Login com Spotify realizado com sucesso!');
     } catch (e) {
-      print("Erro ao trocar o código: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao trocar o código por token.')),
-      );
+      _showErrorSnackbar('Erro ao obter o token de acesso: $e');
+      print('Token Exchange Error: $e');
     }
+  }
+
+  /// Exibe um snackbar de sucesso
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+    );
+  }
+
+  /// Exibe um snackbar de erro
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -104,13 +108,18 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-              onPressed: _launchSpotifyLogin,
-              child: const Text('Entrar no Spotify'),
+              onPressed: _authenticateWithSpotify,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
+              child: const Text('Conectar com Spotify'),
             ),
             if (_accessToken != null)
-              Text(
-                'Token de Acesso: $_accessToken',
-                style: const TextStyle(color: Colors.white, fontSize: 18),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Token de Acesso:\n$_accessToken',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
               ),
           ],
         ),
