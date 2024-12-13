@@ -17,7 +17,10 @@ class TrackonnectionsApp extends StatelessWidget {
       title: 'Trackonnections',
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(0xFF4A148C),
+        scaffoldBackgroundColor: const Color(0xFF6A1B9A), // Cor roxa
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(color: Colors.white), // Texto branco por padrão
+        ),
       ),
       home: const SpotifyAuthScreen(),
     );
@@ -38,7 +41,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
 
   final String clientId = 'b0620bb044c64d529f747bb52b7233c2'; // Substitua pelo seu client_id
   final String clientSecret = '6d197dce2d0a4874a49de7ddcea781b7'; // Substitua pelo seu client_secret
-  final String redirectUri = 'https://trackonnections.web.app'; // URL de redirecionamento configurada no Spotify
+  final String redirectUri = 'https://trackonnections.firebaseapp.com'; // URL de redirecionamento configurada no Spotify
 
   /// Método para autenticar o usuário via Spotify
   Future<void> _authenticateWithSpotify() async {
@@ -127,6 +130,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Trackonnections - Spotify'),
+        backgroundColor: const Color(0xFF6A1B9A), // Cor roxa
       ),
       body: Center(
         child: Column(
@@ -134,8 +138,8 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
           children: [
             ElevatedButton(
               onPressed: _authenticateWithSpotify,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
-              child: const Text('Conectar com Spotify'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.white), // Botão branco
+              child: const Text('Conectar com Spotify', style: TextStyle(color: Color(0xFF6A1B9A))), // Texto roxo
             ),
             if (_accessToken != null)
               Padding(
@@ -152,7 +156,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
               ..._playlists.map((playlist) => ListTile(
                     title: Text(playlist.name ?? 'Sem nome', style: const TextStyle(color: Colors.white)),
                     subtitle: Text(playlist.description ?? 'Sem descrição', style: const TextStyle(color: Colors.white)),
-                  )),
+                  )) 
             ] else if (_accessToken != null)
               const Text(
                 'Nenhuma playlist encontrada',
