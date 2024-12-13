@@ -49,15 +49,20 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
       final credentials = SpotifyApiCredentials(clientId, clientSecret);
       final grant = SpotifyApi.authorizationCodeGrant(credentials);
 
-      // Corrigindo a passagem do escopo para um único Uri
+      // Autenticar o usuário com o FlutterWebAuth
       final authUrl = grant.getAuthorizationUrl(
-        Uri.parse('https://accounts.spotify.com/authorize?scope=playlist-read-private'),
+        Uri.parse('https://accounts.spotify.com/authorize'),
+        scopes: [
+          'playlist-read-private', // Permissão para ler playlists privadas
+          'user-library-read', // Permissão para acessar a biblioteca do usuário
+          'user-top-read' // Permissão para acessar os dados mais ouvidos
+        ],
       );
 
       // Usar FlutterWebAuth para autenticação do usuário
       final result = await FlutterWebAuth.authenticate(
         url: authUrl.toString(),
-        callbackUrlScheme: Uri.parse(redirectUri).scheme,
+        callbackUrlScheme: 'https', // Especifique o esquema 'https' diretamente
       );
 
       // Extrair o código de autorização da URL de redirecionamento
@@ -156,7 +161,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
               ..._playlists.map((playlist) => ListTile(
                     title: Text(playlist.name ?? 'Sem nome', style: const TextStyle(color: Colors.white)),
                     subtitle: Text(playlist.description ?? 'Sem descrição', style: const TextStyle(color: Colors.white)),
-                  )) 
+                  ))
             ] else if (_accessToken != null)
               const Text(
                 'Nenhuma playlist encontrada',
