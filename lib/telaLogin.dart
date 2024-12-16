@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:trackonnections/telaPrincipal.dart';
+import 'package:trackonnections/telaBase.dart';
+import 'package:trackonnections/telaSpotify.dart';
 
 void main() {
   runApp(const Telalogin());
@@ -116,7 +117,7 @@ class LoginScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const SpotifyAuthScreen()),
+                          builder: (context) => const HomeScreen()),
                     );
                   },
                   style: ElevatedButton.styleFrom(

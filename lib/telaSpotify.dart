@@ -134,8 +134,9 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trackonnections - Spotify'),
         backgroundColor: const Color(0xFF6A1B9A), // Cor roxa
+        automaticallyImplyLeading: false, // Remove a setinha de voltar
+        title: const SizedBox.shrink(), // Remove o texto do AppBar
       ),
       body: Center(
         child: Column(
@@ -143,8 +144,21 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
           children: [
             ElevatedButton(
               onPressed: _authenticateWithSpotify,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.white), // Botão branco
-              child: const Text('Conectar com Spotify', style: TextStyle(color: Color(0xFF6A1B9A))), // Texto roxo
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white, // Cor do botão
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16), // Tamanho do botão
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30), // Bordas arredondadas
+                ),
+              ),
+              child: const Text(
+                'Conectar com Spotify',
+                style: TextStyle(
+                  color: Color(0xFF6A1B9A), // Cor do texto roxa
+                  fontWeight: FontWeight.bold, // Texto em negrito
+                  fontSize: 18, // Tamanho da fonte
+                ),
+              ),
             ),
             if (_accessToken != null)
               Padding(
