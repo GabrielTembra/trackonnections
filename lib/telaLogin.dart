@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:trackonnections/telaBase.dart';
 import 'package:trackonnections/telaSpotify.dart';
+import 'package:trackonnections/telaPerfil.dart'; // Importe a tela de personalização
 
 void main() {
   runApp(const Telalogin());
@@ -31,6 +32,42 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF4A148C), // Fundo roxo escuro
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF4A148C),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person, color: Colors.white),
+            onPressed: () {
+              // Exibe o SnackBar com o botão
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Deseja personalizar seu perfil?'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Colors.deepPurpleAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  duration: const Duration(seconds: 4),
+                  action: SnackBarAction(
+                    label: 'Personalizar',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      // Redireciona para a tela de personalização de perfil
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CustomizeProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -114,10 +151,12 @@ class LoginScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
+                    // Navega para a HomeScreen ao pressionar o botão
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const HomeScreen()),
+                        builder: (context) => const HomeScreen(),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(

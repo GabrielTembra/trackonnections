@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:flutter_sound_record/flutter_sound_record.dart';
-import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AudioRecorder extends StatefulWidget {
   const AudioRecorder({required this.onStop, Key? key}) : super(key: key);
@@ -17,19 +16,10 @@ class AudioRecorder extends StatefulWidget {
 class _AudioRecorderState extends State<AudioRecorder> {
   bool _isRecording = false;
   bool _isPaused = false;
-  bool _isRecognizing = false;  // Adicionando o estado de reconhecimento
   int _recordDuration = 0;
   Timer? _timer;
   final FlutterSoundRecord _audioRecorder = FlutterSoundRecord();
-  String _recognizedMusic = '';
-  String _recognizedArtist = '';
   String? _filePath;
-
-  @override
-  void initState() {
-    _isRecording = false;
-    super.initState();
-  }
 
   @override
   void dispose() {
@@ -39,9 +29,24 @@ class _AudioRecorderState extends State<AudioRecorder> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadRecordingPath();
+  }
+
+  // Carregar o caminho da gravação ao iniciar
+  Future<void> _loadRecordingPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path = prefs.getString('last_recording_path');
+    setState(() {
+      _filePath = path;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF6A1B9A), // Cor roxa
+      backgroundColor: const Color(0xFF6A1B9A),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -56,7 +61,6 @@ class _AudioRecorderState extends State<AudioRecorder> {
               ],
             ),
             const SizedBox(height: 40),
-            // Exibe mensagem conforme o estado da gravação
             Text(
               _isRecording
                   ? 'Gravando...'
@@ -65,45 +69,27 @@ class _AudioRecorderState extends State<AudioRecorder> {
                       : 'Aguardando para gravar...',
               style: const TextStyle(
                 fontFamily: 'Roboto',
-                color: Colors.white, 
-                fontSize: 18),
+                color: Colors.white,
+                fontSize: 18,
+              ),
             ),
             const SizedBox(height: 40),
-            if (_recognizedMusic.isNotEmpty) ...<Widget>[
-              Text(
-                'Música: $_recognizedMusic',
-                style: const TextStyle(
-                  fontFamily: 'Roboto',
-                  color: Colors.white, 
-                  fontSize: 18),
-              ),
-              Text(
-                'Artista: $_recognizedArtist',
-                style: const TextStyle(
-                  fontFamily: 'Roboto',
-                  color: Colors.white, 
-                  fontSize: 18),
-              ),
-            ],
             if (!_isRecording && !_isPaused && _filePath != null) ...<Widget>[
               ElevatedButton(
-                onPressed: _isRecognizing ? null : () => _recognizeMusic(_filePath!), // Desabilita o botão durante o reconhecimento
+                onPressed: () => _saveRecordingPath(_filePath!),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6A1B9A), // Cor roxa para o botão
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                  backgroundColor: const Color(0xFF6A1B9A),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 12, horizontal: 24),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                   textStyle: const TextStyle(
-                    fontFamily: 'Roboto', 
-                    fontSize: 18, 
-                    fontWeight: FontWeight.bold),
+                      fontFamily: 'Roboto',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
                 ),
-                child: _isRecognizing
-                    ? const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      )
-                    : const Text('Enviar para reconhecimento'),
+                child: const Text('Salvar gravação'),
               ),
             ]
           ],
@@ -172,92 +158,67 @@ class _AudioRecorderState extends State<AudioRecorder> {
     try {
       if (await _audioRecorder.hasPermission()) {
         await _audioRecorder.start();
-
         bool isRecording = await _audioRecorder.isRecording();
         setState(() {
           _isRecording = isRecording;
           _recordDuration = 0;
         });
-
         _startTimer();
+
+        // Limite a gravação a 12 segundos
+        Future.delayed(const Duration(seconds: 12), () {
+          if (_isRecording) {
+            _stop(); // Para a gravação após 12 segundos
+          }
+        });
       }
     } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
+      debugPrint('Error starting recording: $e');
     }
   }
 
   Future<void> _stop() async {
-    _timer?.cancel();
     final String? path = await _audioRecorder.stop();
+    if (path != null) {
+      widget.onStop(path);
+      setState(() {
+        _isRecording = false;
+        _filePath = path;
+      });
 
-    widget.onStop(path!);
-    setState(() {
-      _isRecording = false;
-      _filePath = path;
-    });
+      // Salva o caminho da gravação no SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_recording_path', path);
+    }
   }
 
   Future<void> _pause() async {
     _timer?.cancel();
     await _audioRecorder.pause();
-
     setState(() => _isPaused = true);
   }
 
   Future<void> _resume() async {
     _startTimer();
     await _audioRecorder.resume();
-
     setState(() => _isPaused = false);
   }
 
   void _startTimer() {
     _timer?.cancel();
-
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       setState(() => _recordDuration++);
     });
   }
 
-  // Função para reconhecimento de música usando o AudD
-  Future<void> _recognizeMusic(String filePath) async {
-    setState(() {
-      _isRecognizing = true; // Inicia o processo de reconhecimento
-    });
+  Future<void> _saveRecordingPath(String filePath) async {
+    // Salva o caminho no SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_recording_path', filePath);
 
-    final url = Uri.parse('https://api.audd.io/');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['api_token'] = '6a40cf17ad250ad3f8e9671ab1dfdd30' // Substitua pela sua chave de API AudD
-      ..files.add(await http.MultipartFile.fromPath('file', filePath));
-
-    try {
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-      final jsonResponse = jsonDecode(responseBody);
-
-      if (jsonResponse['status'] == 'success') {
-        final result = jsonResponse['result'];
-        setState(() {
-          _recognizedMusic = result['title'] ?? 'Música não reconhecida';
-          _recognizedArtist = result['artist'] ?? 'Artista não reconhecido';
-        });
-      } else {
-        setState(() {
-          _recognizedMusic = 'Falha ao reconhecer a música';
-          _recognizedArtist = '';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _recognizedMusic = 'Erro ao enviar o áudio para reconhecimento';
-        _recognizedArtist = '';
-      });
-    } finally {
-      setState(() {
-        _isRecognizing = false; // Finaliza o processo de reconhecimento
-      });
-    }
+    // Exibe um feedback para o usuário
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Gravação salva com sucesso!')),
+    );
   }
 }
