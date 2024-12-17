@@ -3,7 +3,6 @@ import 'package:trackonnections/telaMapa.dart';
 import 'package:trackonnections/telaPerfil.dart';
 import 'package:trackonnections/telaSpotify.dart';
 import 'package:trackonnections/telaReconhecimento.dart';
-import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
 import 'dart:typed_data'; // Para manipular a imagem em bytes
 import 'package:shared_preferences/shared_preferences.dart'; // Para SharedPreferences
 import 'dart:convert'; // Para converter base64
@@ -46,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const SpotifyAuthScreen(),
-    MusicMapScreen(musicLocations: [],),
+    MusicMapScreen(),
     AudioRecorder(onStop: (String path) {}),
   ];
 

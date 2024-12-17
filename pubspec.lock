@@ -494,30 +494,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.2"
-  flutter_osm_interface:
-    dependency: transitive
-    description:
-      name: flutter_osm_interface
-      sha256: a46a3973b21176582d78db115cceaf4ea730614bd3471119b9958108d884fa0f
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.2"
-  flutter_osm_plugin:
-    dependency: "direct main"
-    description:
-      name: flutter_osm_plugin
-      sha256: "43f26ac7791573c7086f1dbf0bdf2084b6c67030949566beebc8f58f773cbbf5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.6"
-  flutter_osm_web:
-    dependency: transitive
-    description:
-      name: flutter_osm_web
-      sha256: "8542dc76aee29479b75fc79861ac748cd0a58482b71f0dfd116af6306e377300"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.5"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -526,30 +502,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.23"
-  flutter_sound_record:
-    dependency: "direct main"
-    description:
-      name: flutter_sound_record
-      sha256: "21bd020a528f1de5b23b3f1fb48ef9dae3b880eccc5aa969ed190262aac026bf"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.3.2"
-  flutter_sound_record_platform_interface:
-    dependency: transitive
-    description:
-      name: flutter_sound_record_platform_interface
-      sha256: c1efe56e241a16db5a5adb7effce3100ca1ea97e45e8b045cea2fcd603a12892
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.1"
-  flutter_sound_record_web:
-    dependency: transitive
-    description:
-      name: flutter_sound_record_web
-      sha256: "7b85aab6774765b2cf7558b1a364711ba135142c0ee5f1695b25e9ff8066f298"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.2"
   flutter_svg:
     dependency: transitive
     description:
@@ -704,14 +656,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.5.10"
-  google_polyline_algorithm:
-    dependency: transitive
-    description:
-      name: google_polyline_algorithm
-      sha256: "357874f00d3f93c3ba1bf4b4d9a154aa9ee87147c068238c1e8392012b686a03"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.1.0"
   google_sign_in:
     dependency: "direct main"
     description:
@@ -1192,14 +1136,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  routing_client_dart:
-    dependency: transitive
-    description:
-      name: routing_client_dart
-      sha256: "4e2acf1145bb8056e04fd93101a9f2bab2fd769c9d972f7f403f9733a670cb33"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.5.5"
   sanitize_html:
     dependency: transitive
     description:
