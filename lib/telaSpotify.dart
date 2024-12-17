@@ -41,7 +41,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
 
   final String clientId = 'b0620bb044c64d529f747bb52b7233c2'; // Substitua pelo seu client_id
   final String clientSecret = '6d197dce2d0a4874a49de7ddcea781b7'; // Substitua pelo seu client_secret
-  final String redirectUri = 'https://trackonnections.firebaseapp.com'; // URL de redirecionamento configurada no Spotify
+  final String redirectUri = ' https://trackonnections.web.app'; // URL de redirecionamento configurada no Spotify
 
   /// Método para autenticar o usuário via Spotify
   Future<void> _authenticateWithSpotify() async {
