@@ -46,12 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const SpotifyAuthScreen(),
-    MusicMapScreen(
-      musicLocations: [
-        {'name': 'Local de Música 1', 'location': GeoPoint(latitude: -23.5505, longitude: -46.6300)},
-        {'name': 'Local de Música 2', 'location': GeoPoint(latitude: -23.5500, longitude: -46.6350)},
-      ],
-    ),
+    MusicMapScreen(musicLocations: [],),
     AudioRecorder(onStop: (String path) {}),
   ];
 

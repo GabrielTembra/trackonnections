@@ -1,7 +1,6 @@
 import 'dart:async';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:flutter_sound_record/flutter_sound_record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AudioRecorder extends StatefulWidget {
@@ -18,13 +17,13 @@ class _AudioRecorderState extends State<AudioRecorder> {
   bool _isPaused = false;
   int _recordDuration = 0;
   Timer? _timer;
-  final FlutterSoundRecord _audioRecorder = FlutterSoundRecord();
+  html.MediaRecorder? _mediaRecorder;
+  List<html.Blob> _audioChunks = [];
   String? _filePath;
 
   @override
   void dispose() {
     _timer?.cancel();
-    _audioRecorder.dispose();
     super.dispose();
   }
 
@@ -91,6 +90,18 @@ class _AudioRecorderState extends State<AudioRecorder> {
                 ),
                 child: const Text('Salvar gravação'),
               ),
+              const SizedBox(height: 20),
+              // Exibir áudio gravado
+              if (_filePath != null) 
+                Column(
+                  children: [
+                    const Text(
+                      'Áudio gravado:',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    AudioPlayerWidget(filePath: _filePath!),
+                  ],
+                ),
             ]
           ],
         ),
@@ -155,52 +166,73 @@ class _AudioRecorderState extends State<AudioRecorder> {
   }
 
   Future<void> _start() async {
-    try {
-      if (await _audioRecorder.hasPermission()) {
-        await _audioRecorder.start();
-        bool isRecording = await _audioRecorder.isRecording();
+    if (html.window.navigator.mediaDevices != null) {
+      try {
+        final mediaStream = await html.window.navigator.mediaDevices!
+            .getUserMedia({'audio': true}); // Solicita acesso ao microfone
+        _mediaRecorder = html.MediaRecorder(mediaStream);
+        _audioChunks.clear();
+
+        // Listen to 'dataavailable' event to collect recorded audio data
+        _mediaRecorder?.addEventListener('dataavailable', (event) {
+          final html.Blob blob = event as html.Blob;
+          _audioChunks.add(blob);
+        });
+
+        // Listen to 'stop' event to handle when the recording stops
+        _mediaRecorder?.addEventListener('stop', (event) {
+          final audioBlob = html.Blob(_audioChunks);
+          final url = html.Url.createObjectUrlFromBlob(audioBlob);
+          setState(() {
+            _filePath = url;
+          });
+          widget.onStop(url);
+        });
+
+        _mediaRecorder?.start();
         setState(() {
-          _isRecording = isRecording;
+          _isRecording = true;
           _recordDuration = 0;
         });
         _startTimer();
 
-        // Limite a gravação a 12 segundos
+        // Limit the recording to 12 seconds
         Future.delayed(const Duration(seconds: 12), () {
           if (_isRecording) {
-            _stop(); // Para a gravação após 12 segundos
+            _stop(); // Stop recording after 12 seconds
           }
         });
+      } catch (e) {
+        debugPrint('Erro ao iniciar gravação: $e');
+        // Adicionar feedback ao usuário caso o microfone não seja acessado
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível acessar o microfone.')),
+        );
       }
-    } catch (e) {
-      debugPrint('Error starting recording: $e');
+    } else {
+      // Caso o navegador não suporte getUserMedia
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Navegador não suporta gravação de áudio.')),
+      );
     }
   }
 
   Future<void> _stop() async {
-    final String? path = await _audioRecorder.stop();
-    if (path != null) {
-      widget.onStop(path);
-      setState(() {
-        _isRecording = false;
-        _filePath = path;
-      });
-
-      // Salva o caminho da gravação no SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_recording_path', path);
-    }
+    _mediaRecorder?.stop();
+    setState(() {
+      _isRecording = false;
+    });
   }
 
   Future<void> _pause() async {
     _timer?.cancel();
-    await _audioRecorder.pause();
+    _mediaRecorder?.pause();
     setState(() => _isPaused = true);
   }
 
   Future<void> _resume() async {
     _startTimer();
-    await _audioRecorder.resume();
+    _mediaRecorder?.resume();
     setState(() => _isPaused = false);
   }
 
@@ -212,13 +244,26 @@ class _AudioRecorderState extends State<AudioRecorder> {
   }
 
   Future<void> _saveRecordingPath(String filePath) async {
-    // Salva o caminho no SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('last_recording_path', filePath);
 
-    // Exibe um feedback para o usuário
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Gravação salva com sucesso!')),
+    );
+  }
+}
+
+class AudioPlayerWidget extends StatelessWidget {
+  final String filePath;
+  const AudioPlayerWidget({required this.filePath, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.play_arrow, color: Colors.white),
+      onPressed: () {
+        html.window.open(filePath, 'audio');
+      },
     );
   }
 }
