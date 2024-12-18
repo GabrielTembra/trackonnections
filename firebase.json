@@ -1,4 +1,22 @@
 {
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/#/spotify", 
+        "destination": "/spotify_auth.html"
+      },
+      {
+        "source": "**", 
+        "destination": "/index.html"
+      }
+    ]
+  },
   "flutter": {
     "platforms": {
       "dart": {
@@ -10,13 +28,5 @@
         }
       }
     }
-  },
-  "hosting": {
-    "public": "build/web",  
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
   }
 }
