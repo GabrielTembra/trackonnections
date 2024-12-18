@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 <head>
   <base href="$FLUTTER_BASE_HREF">
+
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,12 +50,10 @@
           // Atualizar a interface para confirmar sucesso
           document.getElementById("status").innerHTML = "<h1>Autenticação bem-sucedida!</h1><p>Atualizando a interface...</p>";
 
-          // Redirecionar para a tela base dentro do Flutter Web sem abrir uma nova janela
+          // Redirecionar para a aplicação Flutter ou outra tela após 2 segundos
           setTimeout(function() {
-            // Usando history.pushState para garantir que a navegação ocorra no mesmo contexto do app
-            window.history.pushState({}, '', '/telabase');
-            window.dispatchEvent(new PopStateEvent('popstate'));  // Simula um evento de navegação
-          }, 2000); // 2 segundos de espera antes do redirecionamento
+            window.location.href = '/#/spotify';  // Redirecionamento para a página Spotify na app Flutter
+          }, 2000); // 2000 ms = 2 segundos de espera antes do redirecionamento
         } else {
           // Caso o token não seja encontrado
           console.error("Erro: Token não encontrado na URL.");

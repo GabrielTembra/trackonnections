@@ -8,13 +8,25 @@
     ],
     "rewrites": [
       {
-        "source": "/telabase/**", 
-        "destination": "/index.html"  
+        "source": "/#/spotify", 
+        "destination": "/spotify_auth.html"
       },
       {
         "source": "**", 
-        "destination": "/index.html"  
+        "destination": "/index.html"
       }
     ]
+  },
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "trackonnections",
+          "configurations": {
+            "web": "1:165032994955:web:0a615d669df3f162d4cc8e"
+          }
+        }
+      }
+    }
   }
 }
