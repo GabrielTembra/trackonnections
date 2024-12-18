@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:html' as html;
+import 'dart:js' as js;
 
 void main() {
   runApp(const MyApp());
@@ -31,72 +32,33 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
     {'name': 'Local 3', 'latitude': 51.5194, 'longitude': -0.1340},
   ];
 
-  String _generateMapHTML() {
-    String markers = '';
-    for (var location in musicLocations) {
-      markers += """
-        new google.maps.Marker({
-          position: {lat: ${location['latitude']}, lng: ${location['longitude']}},
-          map: map,
-          title: '${location['name']}'
-        });
-      """;
-    }
+  // Método para invocar a função JavaScript
+  void _initializeMap() {
+    final markersData = musicLocations.map((location) {
+      return {
+        'name': location['name'],
+        'latitude': location['latitude'],
+        'longitude': location['longitude'],
+      };
+    }).toList();
 
-    return '''
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Music Map</title>
-        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCdXPkH0L5txsBvmI0FAOepZpMWufrpIRY&callback=initMap" async defer></script>
-        <script>
-          var map;
-          function initMap() {
-            map = new google.maps.Map(document.getElementById("map"), {
-              center: {lat: 51.5074, lng: -0.1278},
-              zoom: 13,
-            });
-
-            // Adicionar marcadores
-            $markers
-          }
-        </script>
-      </head>
-      <body>
-        <div id="map" style="height: 100%; width: 100%;"></div>
-      </body>
-      </html>
-    ''';
+    // Passa os dados de marcador para o JavaScript usando o método call
+    js.context.callMethod('initializeLeafletMap', ['map', 51.5074, -0.1278, 13, markersData]);
   }
 
   @override
   void initState() {
     super.initState();
-    final iframeElement = html.IFrameElement()
-      ..srcdoc = _generateMapHTML()
-      ..style.border = 'none'
-      ..width = '100%'
-      ..height = '500px';
-
-    html.document.body!.append(iframeElement);
+    // Inicializa o mapa após o estado ser carregado
+    _initializeMap();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Music Locations on Map"),
-        backgroundColor: Colors.deepPurple,
-        centerTitle: true,
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: SizedBox(
-            width: double.infinity,
-            height: 500,  // Ajuste o tamanho conforme necessário
-            child: HtmlElementView(viewType: 'map'),
-          ),
-        ),
+      appBar: AppBar(title: const Text('Music Map')),
+      body: SizedBox.expand(
+        child: HtmlElementView(viewType: 'map'), // Este é o contêiner do mapa
       ),
     );
   }
