@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:trackonnections/telaMapa.dart';
-import 'package:trackonnections/telaPerfil.dart';
-import 'package:trackonnections/telaSpotify.dart';
-import 'package:trackonnections/telaReconhecimento.dart';
-import 'dart:typed_data'; // Para manipular a imagem em bytes
-import 'package:shared_preferences/shared_preferences.dart'; // Para SharedPreferences
-import 'dart:convert'; // Para converter base64
+import 'package:flutter_web_auth/flutter_web_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const TrackonnectionsApp());
@@ -23,10 +20,13 @@ class TrackonnectionsApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: const Color(0xFF6A1B9A),
         textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Colors.white, fontFamily: 'Roboto'),
+          bodyMedium: TextStyle(color: Colors.white),
         ),
       ),
-      home: const HomeScreen(),
+      home: const HomeScreen(),  // Tela base agora verifica o token
+      routes: {
+        '/spotify': (context) => const SpotifyPlaylistsScreen(),
+      },
     );
   }
 }
@@ -39,69 +39,91 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-  Uint8List? _profileImageBytes; // Variável para armazenar a imagem em bytes
-  Color _profileColor = Colors.deepPurple; // Cor inicial para o perfil
-
-  final List<Widget> _screens = [
-    const SpotifyAuthScreen(),
-    MusicMapScreen(),
-    AudioRecorder(onStop: (String path) {}),
-  ];
-
-  final List<String> _screenNames = ['Spotify', 'Mapa', 'Reconhecimento'];
+  String? _accessToken;
 
   @override
   void initState() {
     super.initState();
-    _loadProfileData(); // Carregar os dados salvos no SharedPreferences
+    _loadAccessToken();  // Verifica se o token já foi armazenado
   }
 
-  // Função para carregar a imagem e a cor do perfil do SharedPreferences
-  Future<void> _loadProfileData() async {
+  // Função para carregar o token do Spotify armazenado
+  Future<void> _loadAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Carregar a imagem de perfil (base64)
-    String? base64Image = prefs.getString('profile_image');
-    if (base64Image != null) {
-      setState(() {
-        _profileImageBytes = base64Decode(base64Image); // Converte de volta para bytes
-      });
-    }
-
-    // Carregar a cor de perfil
-    String? colorHex = prefs.getString('profile_color');
-    if (colorHex != null) {
-      setState(() {
-        _profileColor = Color(int.parse('0x$colorHex')); // Converte de volta para a cor
-      });
-    }
-  }
-
-  void _onItemTapped(int index) {
     setState(() {
-      _selectedIndex = index;
+      _accessToken = prefs.getString('spotify_access_token');
     });
   }
 
-  // Função para navegar para a tela de personalização de perfil
-  void _goToProfileScreen(BuildContext context) {
-    // Exibe o SnackBar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Perfil clicado!'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(10)),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF6A1B9A),
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Trackonnections',
+          style: TextStyle(color: Colors.white),
         ),
       ),
+      body: _accessToken == null
+          ? const SpotifyAuthScreen()  // Se não tiver token, exibe a tela de autenticação
+          : const SpotifyPlaylistsScreen(),  // Se tiver token, exibe as playlists
     );
+  }
+}
 
-    // Navegar para a tela de personalização de perfil
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CustomizeProfileScreen()),
+class SpotifyAuthScreen extends StatefulWidget {
+  const SpotifyAuthScreen({super.key});
+
+  @override
+  State<SpotifyAuthScreen> createState() => _SpotifyAuthScreenState();
+}
+
+class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
+  final String clientId = '4c4da1c7a8874e4996356c1792886893'; // Seu client_id
+  final String redirectUri = 'https://trackonnections.web.app/telabase'; // URL de redirecionamento
+
+  // Função para autenticar com Spotify e obter o Access Token
+  Future<void> _authenticateWithSpotify() async {
+    try {
+      final authUrl = Uri.https(
+        'accounts.spotify.com',
+        '/authorize',
+        {
+          'client_id': clientId,
+          'response_type': 'token',
+          'redirect_uri': redirectUri,
+          'scope': 'playlist-read-private user-library-read user-top-read',
+        },
+      );
+
+      // Usar FlutterWebAuth para autenticação
+      final result = await FlutterWebAuth.authenticate(
+        url: authUrl.toString(),
+        callbackUrlScheme: Uri.parse(redirectUri).scheme,
+      );
+
+      // Extrair o Access Token da URL de redirecionamento
+      final Uri resultUri = Uri.parse(result);
+      final token = resultUri.fragment.split('&').firstWhere((element) => element.startsWith('access_token=')).split('=')[1];
+
+      // Salvar o token no SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('spotify_access_token', token);
+
+      // Navegar para a tela de playlists
+      Navigator.pushReplacementNamed(context, '/spotify');
+    } catch (e) {
+      print('Authentication Error: $e');
+      _showErrorSnackbar('Erro durante a autenticação com o Spotify');
+    }
+  }
+
+  // Função para exibir um Snackbar de erro
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
     );
   }
 
@@ -109,82 +131,113 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: const [
-            Icon(Icons.music_note, color: Colors.white),
-            SizedBox(width: 8),
-            Text(
-              'Trackonnections',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
         backgroundColor: const Color(0xFF6A1B9A),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+        title: const Text(
+          'Trackonnections',
+          style: TextStyle(color: Colors.white),
         ),
-        actions: [
-          // Foto de perfil ou ícone de pessoa
-          GestureDetector(
-            onTap: () => _goToProfileScreen(context), // Chama a função de navegação
-            child: CircleAvatar(
-              backgroundColor: _profileColor, // Cor de fundo do avatar, que é a cor do perfil
-              radius: 20,
-              backgroundImage: _profileImageBytes != null
-                  ? MemoryImage(_profileImageBytes!) // Exibe a imagem em bytes
-                  : null, // Não exibe imagem se não houver foto
-              child: _profileImageBytes == null
-                  ? Icon(Icons.person, color: _profileColor) // Ícone de pessoa com a cor de perfil
-                  : null, // Caso tenha imagem, não mostra o ícone
+      ),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: _authenticateWithSpotify,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
             ),
           ),
-          const SizedBox(width: 16), // Espaço entre o ícone e a borda
-        ],
-      ),
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomAppBar(
-        color: const Color(0xFF6A1B9A),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(Icons.music_note, 0),
-            _buildNavItem(Icons.map, 1),
-            _buildNavItem(Icons.mic, 2),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, int index) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconButton(
-          icon: Icon(
-            icon,
-            color: Colors.white,
-            size: 24,
-          ),
-          onPressed: () {
-            _onItemTapped(index);
-          },
-        ),
-        Text(
-          _screenNames[index],
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
+          child: const Text(
+            'Conectar com Spotify',
+            style: TextStyle(
+              color: Color(0xFF6A1B9A),
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
+
+class SpotifyPlaylistsScreen extends StatefulWidget {
+  const SpotifyPlaylistsScreen({super.key});
+
+  @override
+  State<SpotifyPlaylistsScreen> createState() => _SpotifyPlaylistsScreenState();
+}
+
+class _SpotifyPlaylistsScreenState extends State<SpotifyPlaylistsScreen> {
+  String? _accessToken;
+  List<dynamic> _playlists = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccessToken();
+  }
+
+  // Função para carregar o token do SharedPreferences
+  Future<void> _loadAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _accessToken = prefs.getString('spotify_access_token');
+    });
+
+    if (_accessToken != null) {
+      _fetchPlaylists();
+    }
+  }
+
+  // Função para buscar playlists do Spotify
+  Future<void> _fetchPlaylists() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.spotify.com/v1/me/playlists'),
+        headers: {
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _playlists = data['items'];
+        });
+      } else {
+        throw Exception('Erro ao buscar playlists');
+      }
+    } catch (e) {
+      print('Error fetching playlists: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF6A1B9A),
+        title: const Text(
+          'Playlists do Spotify',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      body: Center(
+        child: _playlists.isNotEmpty
+            ? ListView.builder(
+                itemCount: _playlists.length,
+                itemBuilder: (context, index) {
+                  final playlist = _playlists[index];
+                  return ListTile(
+                    title: Text(playlist['name'], style: const TextStyle(color: Colors.white)),
+                    subtitle: Text(playlist['description'] ?? 'Sem descrição', style: const TextStyle(color: Colors.white)),
+                  );
+                },
+              )
+            : const CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+

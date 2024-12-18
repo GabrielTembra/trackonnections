@@ -42,7 +42,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   List<dynamic> _playlists = [];
 
   final String clientId = '4c4da1c7a8874e4996356c1792886893'; // Substitua pelo seu client_id
-  final String redirectUri = 'https://trackonnections.web.app/spotify'; // URL de redirecionamento configurada no Spotify
+  final String redirectUri = 'https://trackonnections.web.app/telabase/spotify'; // URL de redirecionamento configurada no Spotify
 
   /// Autenticar com Spotify e obter o Access Token
   Future<void> _authenticateWithSpotify() async {
