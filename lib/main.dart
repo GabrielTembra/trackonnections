@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Importe as credenciais geradas pela FlutterFire CLI
-import 'telaLogin.dart';
-import 'package:trackonnections/telaSpotify.dart';
+import 'telaLogin.dart'; // Certifique-se de que o caminho da telaLogin.dart está correto
 
 void main() async {
   // Garantir que os widgets estejam inicializados
@@ -29,10 +28,9 @@ class TrackConnectionsApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      initialRoute: '/login',  // Rota inicial para login
+      initialRoute: '/login',
       routes: {
-        '/login': (context) => const LoginScreen(),  // Defina sua tela de login aqui
-        '/#/spotify': (context) => const SpotifyAuthScreen(), // Rota para autenticação com Spotify
+        '/login': (context) => LoginScreen(),  // Defina sua tela de login aqui
         // Adicione outras rotas aqui conforme necessário
       },
     );
