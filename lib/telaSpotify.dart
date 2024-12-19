@@ -39,9 +39,9 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   SpotifyApi? _spotify;
   List<PlaylistSimple> _playlists = [];
 
-  final String clientId = 'b0620bb044c64d529f747bb52b7233c2'; // Substitua pelo seu client_id
-  final String clientSecret = '6d197dce2d0a4874a49de7ddcea781b7'; // Substitua pelo seu client_secret
-  final String redirectUri = ' https://trackonnections.web.app'; // URL de redirecionamento configurada no Spotify
+  final String clientId = 'fce00c0056db400cb5276479df7e6ab7'; // Substitua pelo seu client_id
+  final String clientSecret = 'd009b17417f24a048be9432529b7d026'; // Substitua pelo seu client_secret
+  final String redirectUri = ' https://trackonnections.web.app/spotify'; // URL de redirecionamento configurada no Spotify
 
   /// Método para autenticar o usuário via Spotify
   Future<void> _authenticateWithSpotify() async {

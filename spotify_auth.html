@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Autenticação Spotify">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Spotify - Autenticação</title>
+
+  <!-- Flutter Web -->
+  <script src="main.dart.js" defer></script>
+</head>
+<body>
+  <div id="status" style="padding: 20px; text-align: center;">
+    <h1>Conectando ao Spotify...</h1>
+    <p>Por favor, aguarde enquanto processamos sua autenticação.</p>
+  </div>
+
+  <script>
+    (function () {
+      console.log("Iniciando processamento de autenticação do Spotify...");
+
+      try {
+        // Capturar o fragmento da URL
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+
+        // Extrair o token de acesso
+        const accessToken = params.get("access_token");
+        const tokenType = params.get("token_type");
+        const expiresIn = params.get("expires_in");
+
+        console.log("Fragmento da URL capturado:", hash);
+        console.log("Access Token:", accessToken);
+        console.log("Tipo de Token:", tokenType);
+        console.log("Expira em (segundos):", expiresIn);
+
+        if (accessToken) {
+          // Salvar o token no localStorage
+          localStorage.setItem("spotify_access_token", accessToken);
+          localStorage.setItem("spotify_token_type", tokenType);
+          localStorage.setItem("spotify_expires_in", expiresIn);
+
+          // Atualizar a interface para confirmar sucesso
+          document.getElementById("status").innerHTML = "<h1>Autenticação bem-sucedida!</h1><p>Atualizando a interface...</p>";
+
+          // Redirecionar para a tela /spotify após 2 segundos
+          setTimeout(function() {
+            // Navegar para a tela /spotify no Flutter Web
+            window.history.pushState({}, '', '/spotify');
+            window.dispatchEvent(new PopStateEvent('popstate'));  // Simula um evento de navegação
+          }, 2000); // 2 segundos de espera antes do redirecionamento
+        } else {
+          // Caso o token não seja encontrado
+          console.error("Erro: Token não encontrado na URL.");
+          document.getElementById("status").innerHTML = "<h1>Erro ao processar autenticação</h1><p>Token não encontrado.</p>";
+        }
+      } catch (error) {
+        console.error("Erro durante o processamento do redirecionamento:", error);
+        document.getElementById("status").innerHTML = "<h1>Erro ao processar autenticação</h1><p>Verifique os logs para mais detalhes.</p>";
+      }
+    })();
+  </script>
+</body>
+</html>

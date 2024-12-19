@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:trackonnections/telaBase.dart';
+import 'package:trackonnections/telaMapa.dart';
+import 'package:trackonnections/telaReconhecimento.dart';
+import 'package:trackonnections/telaSpotify.dart';
 import 'firebase_options.dart'; // Importe as credenciais geradas pela FlutterFire CLI
 import 'telaLogin.dart'; // Certifique-se de que o caminho da telaLogin.dart está correto
 
@@ -30,7 +34,11 @@ class TrackConnectionsApp extends StatelessWidget {
       ),
       initialRoute: '/login',
       routes: {
-        '/login': (context) => LoginScreen(),  // Defina sua tela de login aqui
+        '/login': (context) => LoginScreen(),
+        '/telabase': (context) => HomeScreen(),
+        '/spotify':(context) => SpotifyAuthScreen(), 
+        '/mapa':(context) => MusicMapScreen(),
+        'gravacao':(context) => AudioRecorder(onStop: (String path) {},),// Defina sua tela de login aqui
         // Adicione outras rotas aqui conforme necessário
       },
     );

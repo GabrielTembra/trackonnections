@@ -17,6 +17,28 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/login",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/telabase",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/spotify",
+        "destination": "/spotify_auth.html"
+      },
+      {
+        "source": "/mapa",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/gravacao",
+        "destination": "/index.html"
+      }
     ]
   }
 }
