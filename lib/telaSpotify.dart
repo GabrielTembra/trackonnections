@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:spotify/spotify.dart';
+import 'package:provider/provider.dart'; // Adicione essa importação
 import 'package:trackonnections/telaLogin.dart'; // Importe sua tela de login
+import 'package:trackonnections/profile_provider.dart'; // Importe seu ProfileProvider
 
 void main() {
   runApp(const TrackonnectionsApp());
@@ -12,17 +14,20 @@ class TrackonnectionsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Trackonnections',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(0xFF6A1B9A), // Cor roxa
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Colors.white), // Texto branco por padrão
+    return ChangeNotifierProvider(
+      create: (context) => ProfileProvider(), // Adicione o ProfileProvider aqui
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Trackonnections',
+        theme: ThemeData(
+          primarySwatch: Colors.deepPurple,
+          scaffoldBackgroundColor: const Color(0xFF6A1B9A), // Cor roxa
+          textTheme: const TextTheme(
+            bodyMedium: TextStyle(color: Colors.white), // Texto branco por padrão
+          ),
         ),
+        home: const SpotifyAuthScreen(),
       ),
-      home: const SpotifyAuthScreen(),
     );
   }
 }
@@ -39,14 +44,25 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   SpotifyApi? _spotify;
   List<PlaylistSimple> _playlists = [];
 
-  final String clientId = 'fce00c0056db400cb5276479df7e6ab7'; // Substitua pelo seu client_id
-  final String clientSecret = 'd009b17417f24a048be9432529b7d026'; // Substitua pelo seu client_secret
-  final String redirectUri = ' https://trackonnections.web.app/spotify'; // URL de redirecionamento configurada no Spotify
+  @override
+  void initState() {
+    super.initState();
+    // Carregar os dados do perfil assim que a tela for carregada
+    _loadSpotifyCredentials();
+  }
 
-  /// Método para autenticar o usuário via Spotify
+  // Função para obter as credenciais do ProfileProvider
+  Future<void> _loadSpotifyCredentials() async {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    await profileProvider.loadProfileData();
+  }
+
+  // Método para autenticar o usuário via Spotify
   Future<void> _authenticateWithSpotify() async {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    
     try {
-      final credentials = SpotifyApiCredentials(clientId, clientSecret);
+      final credentials = SpotifyApiCredentials(profileProvider.clientId, profileProvider.clientSecret);
       final grant = SpotifyApi.authorizationCodeGrant(credentials);
 
       // Autenticar o usuário com o FlutterWebAuth
@@ -80,6 +96,9 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   Future<void> _exchangeCodeForToken(String code, grant) async {
     try {
       final credentials = await grant.getToken(code);
+      final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+      profileProvider.setRecordingState(true); // Exemplo de atualização do estado de gravação, se necessário
+
       setState(() {
         _accessToken = credentials.accessToken;
         _spotify = SpotifyApi(credentials);

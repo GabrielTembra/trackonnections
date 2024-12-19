@@ -4,6 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class ProfileProvider extends ChangeNotifier {
+  // Credenciais do Spotify
+  final String _clientId = 'fce00c0056db400cb5276479df7e6ab7'; // Substitua pelo seu client_id
+  final String _clientSecret = 'd009b17417f24a048be9432529b7d026'; // Substitua pelo seu client_secret
+  final String _redirectUri = 'https://trackonnections.web.app/spotify'; // URL de redirecionamento configurada no Spotify
+
   Uint8List? _profileImageBytes;
   Color _profileColor = const Color(0xFF4A148C);
   String _profileName = '';
@@ -123,4 +128,9 @@ class ProfileProvider extends ChangeNotifier {
     _isRecording = isRecording;
     notifyListeners();
   }
+
+  // Funções para acessar as credenciais do Spotify
+  String get clientId => _clientId;
+  String get clientSecret => _clientSecret;
+  String get redirectUri => _redirectUri;
 }

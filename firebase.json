@@ -29,7 +29,7 @@
       },
       {
         "source": "/spotify",
-        "destination": "/spotify_auth.html"
+        "destination": "/index.html"
       },
       {
         "source": "/mapa",
