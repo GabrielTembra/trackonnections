@@ -1,36 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_web_auth/flutter_web_auth.dart';
-import 'package:spotify/spotify.dart';
-import 'package:provider/provider.dart'; // Adicione essa importação
-import 'package:trackonnections/telaLogin.dart'; // Importe sua tela de login
-import 'package:trackonnections/profile_provider.dart'; // Importe seu ProfileProvider
-
-void main() {
-  runApp(const TrackonnectionsApp());
-}
-
-class TrackonnectionsApp extends StatelessWidget {
-  const TrackonnectionsApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ProfileProvider(), // Adicione o ProfileProvider aqui
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Trackonnections',
-        theme: ThemeData(
-          primarySwatch: Colors.deepPurple,
-          scaffoldBackgroundColor: const Color(0xFF6A1B9A), // Cor roxa
-          textTheme: const TextTheme(
-            bodyMedium: TextStyle(color: Colors.white), // Texto branco por padrão
-          ),
-        ),
-        home: const SpotifyAuthScreen(),
-      ),
-    );
-  }
-}
+import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'profile_provider.dart'; // Importe o ProfileProvider
+import 'package:app_links/app_links.dart';
 
 class SpotifyAuthScreen extends StatefulWidget {
   const SpotifyAuthScreen({super.key});
@@ -40,109 +14,185 @@ class SpotifyAuthScreen extends StatefulWidget {
 }
 
 class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
-  String? _accessToken;
-  SpotifyApi? _spotify;
-  List<PlaylistSimple> _playlists = [];
+  bool _isAuthenticated = false;
+  List<dynamic> _playlists = [];
+  List<dynamic> _tracks = [];
+  bool _isLoading = false;
+  bool _isAuthAttempted = false;
 
   @override
   void initState() {
     super.initState();
-    // Carregar os dados do perfil assim que a tela for carregada
-    _loadSpotifyCredentials();
+    _initializeSpotify();
+    _listenForRedirect();
   }
 
-  // Função para obter as credenciais do ProfileProvider
-  Future<void> _loadSpotifyCredentials() async {
-    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
-    await profileProvider.loadProfileData();
-  }
+  // Inicializa a autenticação com o Spotify
+  Future<void> _initializeSpotify() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-  // Método para autenticar o usuário via Spotify
-  Future<void> _authenticateWithSpotify() async {
-    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
-    
     try {
-      final credentials = SpotifyApiCredentials(profileProvider.clientId, profileProvider.clientSecret);
-      final grant = SpotifyApi.authorizationCodeGrant(credentials);
-
-      // Autenticar o usuário com o FlutterWebAuth
-      final authUrl = grant.getAuthorizationUrl(
-        Uri.parse('https://accounts.spotify.com/authorize'),
-        scopes: [
-          'playlist-read-private', // Permissão para ler playlists privadas
-          'user-library-read', // Permissão para acessar a biblioteca do usuário
-          'user-top-read' // Permissão para acessar os dados mais ouvidos
-        ],
-      );
-
-      // Usar FlutterWebAuth para autenticação do usuário
-      final result = await FlutterWebAuth.authenticate(
-        url: authUrl.toString(),
-        callbackUrlScheme: 'https', // Especifique o esquema 'https' diretamente
-      );
-
-      // Extrair o código de autorização da URL de redirecionamento
-      final code = Uri.parse(result).queryParameters['code'];
-      if (code != null) {
-        await _exchangeCodeForToken(code, grant);
-      }
-    } catch (e) {
-      _showErrorSnackbar('Erro durante a autenticação com o Spotify');
-      print('Authentication Error: $e');
-    }
-  }
-
-  /// Troca o código de autorização pelo token de acesso
-  Future<void> _exchangeCodeForToken(String code, grant) async {
-    try {
-      final credentials = await grant.getToken(code);
       final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
-      profileProvider.setRecordingState(true); // Exemplo de atualização do estado de gravação, se necessário
+      final storedToken = profileProvider.accessToken;
 
-      setState(() {
-        _accessToken = credentials.accessToken;
-        _spotify = SpotifyApi(credentials);
-      });
-      _showSuccessSnackbar('Login com Spotify realizado com sucesso!');
-
-      // Após a autenticação, buscar as playlists do usuário
-      await _fetchPlaylists();
-
-      // Redirecionar para a tela de login após autenticação bem-sucedida
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const Telalogin()), // Redireciona para a tela de login
-      );
-    } catch (e) {
-      _showErrorSnackbar('Erro ao obter o token de acesso: $e');
-      print('Token Exchange Error: $e');
-    }
-  }
-
-  /// Método para buscar as playlists do usuário
-  Future<void> _fetchPlaylists() async {
-    if (_spotify != null) {
-      try {
-        // Usando o método correto para buscar as playlists
-        final playlists = await _spotify!.playlists.me.all();
+      if (storedToken != null) {
         setState(() {
-          _playlists = playlists.toList();
+          _isAuthenticated = true;
         });
-      } catch (e) {
-        _showErrorSnackbar('Erro ao buscar playlists: $e');
-        print('Playlist Fetch Error: $e');
+        await _fetchPlaylists(storedToken);
+      } else if (!_isAuthAttempted) {
+        await _authenticateSpotify();
       }
+    } catch (e) {
+      _showErrorSnackbar("Erro durante a inicialização: $e");
+      debugPrint("Initialization Error: $e");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  /// Exibe um snackbar de sucesso
-  void _showSuccessSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.green),
-    );
+  // Inicia o processo de autenticação
+  Future<void> _authenticateSpotify() async {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+
+    try {
+      setState(() {
+        _isAuthAttempted = true;
+      });
+
+      final authorizationUrl = Uri.https(
+        'accounts.spotify.com',
+        '/authorize',
+        {
+          'client_id': profileProvider.clientId,
+          'response_type': 'code',
+          'redirect_uri': profileProvider.redirectUri,
+          'scope': 'playlist-read-private playlist-read-collaborative user-read-playback-state',
+        },
+      );
+
+      // Lança a URL de autenticação no navegador do app sem abrir múltiplas abas
+      await _launchURLInWebView(authorizationUrl.toString());
+    } catch (e) {
+      _showErrorSnackbar("Erro durante a autenticação: $e");
+      debugPrint("Authentication Error: $e");
+    }
   }
 
-  /// Exibe um snackbar de erro
+  // Lança a URL de autenticação no navegador do app sem abrir múltiplas abas
+  Future<void> _launchURLInWebView(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url, forceWebView: true, enableJavaScript: true); // Força abrir em um WebView
+    } else {
+      throw 'Não foi possível abrir a URL: $url';
+    }
+  }
+
+  // Escuta o redirecionamento da URL após a autenticação
+  Future<void> _listenForRedirect() async {
+    final appLinks = AppLinks();
+
+    // Escuta os links que o app recebe
+    appLinks.uriLinkStream.listen((Uri? uri) async {
+      if (uri != null && uri.queryParameters.containsKey('code')) {
+        final code = uri.queryParameters['code']!;
+        final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+
+        // Troca o código por um token de acesso
+        final accessToken = await _exchangeCodeForToken(code, profileProvider);
+
+        if (accessToken.isNotEmpty) {
+          // Salva o token de acesso
+          profileProvider.setAccessToken(accessToken);
+
+          setState(() {
+            _isAuthenticated = true;
+          });
+
+          // Agora, com o accessToken, faz a requisição para pegar as playlists
+          await _fetchPlaylists(accessToken);
+        }
+      } else {
+        _showErrorSnackbar("Código de autenticação não encontrado.");
+      }
+    });
+  }
+
+  // Troca o código por um token de acesso
+  Future<String> _exchangeCodeForToken(String code, ProfileProvider profileProvider) async {
+    final url = Uri.parse('https://accounts.spotify.com/api/token');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + base64Encode(utf8.encode('${profileProvider.clientId}:${profileProvider.clientSecret}')),
+      },
+      body: {
+        'code': code,
+        'redirect_uri': profileProvider.redirectUri,
+        'grant_type': 'authorization_code',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['access_token'];
+    } else {
+      throw Exception('Erro ao trocar código por token');
+    }
+  }
+
+  // Busca as playlists do Spotify
+  Future<void> _fetchPlaylists(String accessToken) async {
+    final url = Uri.parse("https://api.spotify.com/v1/me/playlists");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {"Authorization": "Bearer $accessToken"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _playlists = data['items'];
+        });
+      } else {
+        _showErrorSnackbar("Erro ao buscar playlists: ${response.statusCode}");
+      }
+    } catch (e) {
+      _showErrorSnackbar("Erro ao buscar playlists: $e");
+    }
+  }
+
+  // Busca as músicas de uma playlist específica
+  Future<void> _fetchPlaylistTracks(String playlistId, String accessToken) async {
+    final url = Uri.parse("https://api.spotify.com/v1/playlists/$playlistId/tracks");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {"Authorization": "Bearer $accessToken"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _tracks = data['items'];
+        });
+      } else {
+        _showErrorSnackbar("Erro ao buscar músicas: ${response.statusCode}");
+      }
+    } catch (e) {
+      _showErrorSnackbar("Erro ao buscar músicas: $e");
+    }
+  }
+
+  // Exibe a mensagem de erro
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
@@ -153,56 +203,74 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF6A1B9A), // Cor roxa
-        automaticallyImplyLeading: false, // Remove a setinha de voltar
-        title: const SizedBox.shrink(), // Remove o texto do AppBar
+        backgroundColor: const Color(0xFF6A1B9A),
+        automaticallyImplyLeading: false,
+        title: const Text('Spotify Playlists'),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: _authenticateWithSpotify,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white, // Cor do botão
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16), // Tamanho do botão
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30), // Bordas arredondadas
+      backgroundColor: const Color(0xFF6A1B9A), // Tela roxa
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _isAuthenticated
+              ? _tracks.isEmpty
+                  ? ListView.builder(
+                      itemCount: _playlists.length,
+                      itemBuilder: (context, index) {
+                        final playlist = _playlists[index];
+                        return ListTile(
+                          leading: playlist['images'] != null && playlist['images'].isNotEmpty
+                              ? Image.network(
+                                  playlist['images'][0]['url'],
+                                  width: 80, // Tamanho aumentado
+                                  height: 80, // Tamanho aumentado
+                                  fit: BoxFit.cover,
+                                )
+                              : const Icon(Icons.music_note, size: 80), // Ícone maior
+                          title: Text(
+                            playlist['name'] ?? 'Sem nome',
+                            style: const TextStyle(color: Colors.white, fontSize: 18), // Nome visível
+                          ),
+                          subtitle: Text(
+                            '${playlist['tracks']['total']} músicas',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          onTap: () async {
+                            final playlistId = playlist['id']; // Pega o ID da playlist
+                            final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+                            final accessToken = profileProvider.accessToken;
+
+                            if (accessToken != null) {
+                              // Carrega as músicas da playlist
+                              await _fetchPlaylistTracks(playlistId, accessToken);
+                            }
+                          },
+                        );
+                      },
+                    )
+                  : ListView.builder(
+                      itemCount: _tracks.length,
+                      itemBuilder: (context, index) {
+                        final track = _tracks[index];
+                        return ListTile(
+                          title: Text(
+                            track['track']['name'], // Nome da música
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          subtitle: Text(
+                            track['track']['artists'][0]['name'], // Nome do artista
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          onTap: () {
+                            // Lógica para reproduzir a música ou exibir mais informações
+                          },
+                        );
+                      },
+                    )
+              : Center(
+                  child: ElevatedButton(
+                    onPressed: _authenticateSpotify,
+                    child: const Text('Login com Spotify'),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'Conectar com Spotify',
-                style: TextStyle(
-                  color: Color(0xFF6A1B9A), // Cor do texto roxa
-                  fontWeight: FontWeight.bold, // Texto em negrito
-                  fontSize: 18, // Tamanho da fonte
-                ),
-              ),
-            ),
-            if (_accessToken != null)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Token de Acesso:\n$_accessToken',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            if (_playlists.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const Text('Playlists do usuário:', style: TextStyle(color: Colors.white)),
-              ..._playlists.map((playlist) => ListTile(
-                    title: Text(playlist.name ?? 'Sem nome', style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(playlist.description ?? 'Sem descrição', style: const TextStyle(color: Colors.white)),
-                  ))
-            ] else if (_accessToken != null)
-              const Text(
-                'Nenhuma playlist encontrada',
-                style: TextStyle(color: Colors.white),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
