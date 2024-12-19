@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:trackonnections/telaBase.dart';
 import 'package:trackonnections/telaMapa.dart';
-import 'package:trackonnections/telaReconhecimento.dart';
 import 'package:trackonnections/telaSpotify.dart';
+import 'package:trackonnections/telaReconhecimento.dart';
+import 'package:trackonnections/telaLogin.dart'; // Certifique-se de que o caminho da telaLogin.dart está correto
+import 'package:provider/provider.dart'; // Para o Provider
+import 'package:trackonnections/profile_provider.dart'; // Importe o seu ProfileProvider
+import 'package:trackonnections/telaRecorder.dart'; // Importe o RecorderState
 import 'firebase_options.dart'; // Importe as credenciais geradas pela FlutterFire CLI
-import 'telaLogin.dart'; // Certifique-se de que o caminho da telaLogin.dart está correto
+import 'package:trackonnections/telaRecorder.dart'; // Importando a tela de gravação de áudio, se necessário
 
 void main() async {
   // Garantir que os widgets estejam inicializados
@@ -25,22 +29,27 @@ class TrackConnectionsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'TrackConnections',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ProfileProvider()), // Provider para gerenciar o estado do perfil
+        ChangeNotifierProvider(create: (_) => RecorderState()), // Provider para gerenciar o estado do gravador
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'TrackConnections',
+        theme: ThemeData(
+          primarySwatch: Colors.deepPurple,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        initialRoute: '/login', // Defina a rota inicial
+        routes: {
+          '/login': (context) => const LoginScreen(),
+          '/telabase': (context) => const HomeScreen(),
+          '/spotify': (context) => const SpotifyAuthScreen(), 
+          '/mapa': (context) => const MusicMapScreen(),
+          '/gravacao': (context) => AudioRecorder(onStop: (String path) {}),
+        },
       ),
-      initialRoute: '/login',
-      routes: {
-        '/login': (context) => LoginScreen(),
-        '/telabase': (context) => HomeScreen(),
-        '/spotify':(context) => SpotifyAuthScreen(), 
-        '/mapa':(context) => MusicMapScreen(),
-        'gravacao':(context) => AudioRecorder(onStop: (String path) {},),// Defina sua tela de login aqui
-        // Adicione outras rotas aqui conforme necessário
-      },
     );
   }
 }

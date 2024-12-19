@@ -3,9 +3,11 @@ import 'package:trackonnections/telaMapa.dart';
 import 'package:trackonnections/telaPerfil.dart';
 import 'package:trackonnections/telaSpotify.dart';
 import 'package:trackonnections/telaReconhecimento.dart';
+import 'package:trackonnections/profile_provider.dart'; // Importe o ProfileProvider aqui
 import 'dart:typed_data'; // Para manipular a imagem em bytes
 import 'package:shared_preferences/shared_preferences.dart'; // Para SharedPreferences
 import 'dart:convert'; // Para converter base64
+import 'package:provider/provider.dart'; // Importando o Provider
 
 void main() {
   runApp(const TrackonnectionsApp());
@@ -16,17 +18,20 @@ class TrackonnectionsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Trackonnections',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(0xFF6A1B9A),
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Colors.white, fontFamily: 'Roboto'),
+    return ChangeNotifierProvider(
+      create: (_) => ProfileProvider(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Trackonnections',
+        theme: ThemeData(
+          primarySwatch: Colors.deepPurple,
+          scaffoldBackgroundColor: const Color(0xFF6A1B9A),
+          textTheme: const TextTheme(
+            bodyMedium: TextStyle(color: Colors.white, fontFamily: 'Roboto'),
+          ),
         ),
+        home: const HomeScreen(),
       ),
-      home: const HomeScreen(),
     );
   }
 }
@@ -38,10 +43,11 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
-  Uint8List? _profileImageBytes; // Variável para armazenar a imagem em bytes
-  Color _profileColor = Colors.deepPurple; // Cor inicial para o perfil
+
+  // Controlador de animação para o efeito de pulsação
+  late AnimationController _animationController;
 
   final List<Widget> _screens = [
     const SpotifyAuthScreen(),
@@ -54,28 +60,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProfileData(); // Carregar os dados salvos no SharedPreferences
+    // Carregar os dados do perfil usando o provider
+    context.read<ProfileProvider>().loadProfileData();
+
+    // Configurar o AnimationController
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true); // Repetir a animação
   }
 
-  // Função para carregar a imagem e a cor do perfil do SharedPreferences
-  Future<void> _loadProfileData() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    // Carregar a imagem de perfil (base64)
-    String? base64Image = prefs.getString('profile_image');
-    if (base64Image != null) {
-      setState(() {
-        _profileImageBytes = base64Decode(base64Image); // Converte de volta para bytes
-      });
-    }
-
-    // Carregar a cor de perfil
-    String? colorHex = prefs.getString('profile_color');
-    if (colorHex != null) {
-      setState(() {
-        _profileColor = Color(int.parse('0x$colorHex')); // Converte de volta para a cor
-      });
-    }
+  @override
+  void dispose() {
+    _animationController.dispose(); // Limpar o controlador ao sair
+    super.dispose();
   }
 
   void _onItemTapped(int index) {
@@ -84,29 +82,10 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // Função para navegar para a tela de personalização de perfil
-  void _goToProfileScreen(BuildContext context) {
-    // Exibe o SnackBar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Perfil clicado!'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(10)),
-        ),
-      ),
-    );
-
-    // Navegar para a tela de personalização de perfil
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CustomizeProfileScreen()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final profileProvider = context.watch<ProfileProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -133,19 +112,24 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           // Foto de perfil ou ícone de pessoa
           GestureDetector(
-            onTap: () => _goToProfileScreen(context), // Chama a função de navegação
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CustomizeProfileScreen(),
+              ),
+            ),
             child: CircleAvatar(
-              backgroundColor: _profileColor, // Cor de fundo do avatar, que é a cor do perfil
+              backgroundColor: profileProvider.profileColor,
               radius: 20,
-              backgroundImage: _profileImageBytes != null
-                  ? MemoryImage(_profileImageBytes!) // Exibe a imagem em bytes
-                  : null, // Não exibe imagem se não houver foto
-              child: _profileImageBytes == null
-                  ? Icon(Icons.person, color: _profileColor) // Ícone de pessoa com a cor de perfil
-                  : null, // Caso tenha imagem, não mostra o ícone
+              backgroundImage: profileProvider.profileImageBytes != null
+                  ? MemoryImage(profileProvider.profileImageBytes!)
+                  : null,
+              child: profileProvider.profileImageBytes == null
+                  ? Icon(Icons.person, color: profileProvider.profileColor)
+                  : null,
             ),
           ),
-          const SizedBox(width: 16), // Espaço entre o ícone e a borda
+          const SizedBox(width: 16),
         ],
       ),
       body: _screens[_selectedIndex],
@@ -156,26 +140,30 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildNavItem(Icons.music_note, 0),
             _buildNavItem(Icons.map, 1),
-            _buildNavItem(Icons.mic, 2),
+            _buildNavItem(Icons.mic, 2, isRecording: profileProvider.isRecording),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, int index) {
+  Widget _buildNavItem(IconData icon, int index, {bool isRecording = false}) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        IconButton(
-          icon: Icon(
-            icon,
-            color: Colors.white,
-            size: 24,
+        ScaleTransition(
+          scale: isRecording && index == 2
+              ? Tween<double>(begin: 1.0, end: 1.2).animate(_animationController)
+              : AlwaysStoppedAnimation(1.0),
+          child: IconButton(
+            icon: Icon(icon, color: Colors.white, size: 24),
+            onPressed: () {
+              _onItemTapped(index);
+              if (index == 2) {
+                context.read<ProfileProvider>().toggleRecording(); // Alternar gravação usando o provider
+              }
+            },
           ),
-          onPressed: () {
-            _onItemTapped(index);
-          },
         ),
         Text(
           _screenNames[index],
