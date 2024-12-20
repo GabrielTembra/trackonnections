@@ -31,6 +31,7 @@ dependencies:
   image_picker: ^1.1.2
   just_audio: ^0.9.42
   latlong2: ^0.9.1
+  location: ^6.0.2
   map: ^2.0.2
   maps_launcher: ^2.2.1
   permission_handler: ^11.3.1

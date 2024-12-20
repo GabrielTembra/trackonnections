@@ -44,7 +44,7 @@ class LoginScreen extends StatelessWidget {
                 SnackBar(
                   content: const Text('Deseja personalizar seu perfil?'),
                   behavior: SnackBarBehavior.floating,
-                  backgroundColor: Colors.deepPurpleAccent,
+                  backgroundColor: Colors.deepPurple,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),

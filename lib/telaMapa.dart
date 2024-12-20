@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:html' as html;
-import 'dart:js' as js;
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:location/location.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,43 +22,81 @@ class MusicMapScreen extends StatefulWidget {
   const MusicMapScreen({Key? key}) : super(key: key);
 
   @override
-  _MusicMapScreenState createState() => _MusicMapScreenState();
+  State<MusicMapScreen> createState() => _MusicMapScreenState();
 }
 
 class _MusicMapScreenState extends State<MusicMapScreen> {
-  final List<Map<String, dynamic>> musicLocations = [
-    {'name': 'Local 1', 'latitude': 51.5074, 'longitude': -0.1278},
-    {'name': 'Local 2', 'latitude': 51.5155, 'longitude': -0.1420},
-    {'name': 'Local 3', 'latitude': 51.5194, 'longitude': -0.1340},
-  ];
-
-  // Método para invocar a função JavaScript
-  void _initializeMap() {
-    final markersData = musicLocations.map((location) {
-      return {
-        'name': location['name'],
-        'latitude': location['latitude'],
-        'longitude': location['longitude'],
-      };
-    }).toList();
-
-    // Passa os dados de marcador para o JavaScript usando o método call
-    js.context.callMethod('initializeLeafletMap', ['map', 51.5074, -0.1278, 13, markersData]);
-  }
+  late GoogleMapController mapController;
+  LatLng _currentLocation = const LatLng(-23.550520, -46.633308); // Coordenadas iniciais (São Paulo)
+  final List<Marker> _markers = [];
 
   @override
   void initState() {
     super.initState();
-    // Inicializa o mapa após o estado ser carregado
-    _initializeMap();
+    _initializeLocation();
+  }
+
+  /// Inicializa o mapa e atualiza a localização atual com marcador.
+  Future<void> _initializeLocation() async {
+    final Location location = Location();
+
+    // Verifique se a permissão foi concedida
+    bool _serviceEnabled;
+    PermissionStatus _permissionGranted;
+
+    _serviceEnabled = await location.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) {
+        return; // Caso o serviço de localização não esteja ativado
+      }
+    }
+
+    _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        return; // Caso a permissão não tenha sido concedida
+      }
+    }
+
+    // Agora obtenha a localização atual
+    LocationData currentLocation = await location.getLocation();
+
+    // Atualizando o marcador e o mapa com a nova localização
+    setState(() {
+      _currentLocation = LatLng(currentLocation.latitude!, currentLocation.longitude!);
+      _markers.clear(); // Limpa os marcadores antigos antes de adicionar o novo
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('trackonnections'),
+          position: _currentLocation,
+          infoWindow: const InfoWindow(title: 'Trackonnections'),
+          icon: BitmapDescriptor.defaultMarker,
+        ),
+      );
+    });
+
+    // Centraliza o mapa na localização atual
+    mapController.animateCamera(
+      CameraUpdate.newLatLngZoom(_currentLocation, 15),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Music Map')),
-      body: SizedBox.expand(
-        child: HtmlElementView(viewType: 'map'), // Este é o contêiner do mapa
+      body: GoogleMap(
+        initialCameraPosition: CameraPosition(
+          target: _currentLocation,
+          zoom: 15,
+        ),
+        onMapCreated: (controller) {
+          mapController = controller;
+        },
+        markers: Set<Marker>.of(_markers),
+        myLocationEnabled: true, // Mostra o ponto azul da localização atual
+        myLocationButtonEnabled: true, // Habilita o botão para focar na localização
       ),
     );
   }

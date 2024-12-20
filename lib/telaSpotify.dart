@@ -3,8 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'profile_provider.dart'; // Importe o ProfileProvider
-import 'package:just_audio/just_audio.dart'; // Para reprodução de música
+import 'profile_provider.dart'; // Import the ProfileProvider
+import 'package:just_audio/just_audio.dart'; // For audio playback
 import 'package:app_links/app_links.dart';
 
 class SpotifyAuthScreen extends StatefulWidget {
@@ -20,18 +20,45 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   List<dynamic> _tracks = [];
   bool _isLoading = false;
   bool _isAuthAttempted = false;
-  final AudioPlayer _audioPlayer = AudioPlayer(); // Player de áudio
+  final AudioPlayer _audioPlayer = AudioPlayer(); // Audio player instance
+
+  String? _currentTrackName; // Track name
+  String? _currentTrackArtist; // Track artist
 
   @override
   void initState() {
     super.initState();
     _initializeSpotify();
     _listenForRedirect();
+
+    // Listener to detect changes in audio player state
+    _audioPlayer.playerStateStream.listen((playerState) {
+      if (playerState.processingState == ProcessingState.completed) {
+        setState(() {
+          _currentTrackName = null;
+          _currentTrackArtist = null;
+        });
+      }
+    });
+
+    // Listen to playback events
+    _audioPlayer.playbackEventStream.listen((event) {
+      final currentIndex = _audioPlayer.currentIndex;
+
+      // If the current track index is available, update the track info
+      if (currentIndex != null) {
+        setState(() {
+          // Accessing track metadata
+          _currentTrackName = _audioPlayer.audioSource!.sequence[0].tag?.toString() ?? "Unknown Track";
+          _currentTrackArtist = _audioPlayer.audioSource!.sequence[0].tag?.toString() ?? "Unknown Artist";
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose(); // Libera o player ao fechar a tela
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -90,7 +117,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
     if (await canLaunch(url)) {
       await launch(url, forceWebView: true, enableJavaScript: true);
     } else {
-      throw 'Não foi possível abrir a URL: $url';
+      throw 'Unable to launch URL: $url';
     }
   }
 
@@ -134,7 +161,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
       final data = json.decode(response.body);
       return data['access_token'];
     } else {
-      throw Exception('Erro ao trocar código por token');
+      throw Exception('Error exchanging code for token');
     }
   }
 
@@ -154,7 +181,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Erro ao buscar playlists: $e");
+      debugPrint("Error fetching playlists: $e");
     }
   }
 
@@ -174,7 +201,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Erro ao buscar músicas: $e");
+      debugPrint("Error fetching tracks: $e");
     }
   }
 
@@ -182,7 +209,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
     if (trackUrl == null || trackUrl.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Prévia não disponível para esta música.'),
+          content: Text('Preview not available for this track.'),
         ),
       );
       return;
@@ -192,10 +219,10 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
       await _audioPlayer.setUrl(trackUrl);
       await _audioPlayer.play();
     } catch (e) {
-      debugPrint("Erro ao reproduzir música: $e");
+      debugPrint("Error playing track: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Erro ao reproduzir a música. Tente novamente.'),
+          content: Text('Error playing track. Please try again.'),
         ),
       );
     }
@@ -212,68 +239,90 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _isAuthenticated
-              ? _tracks.isEmpty
-                  ? ListView.builder(
-                      itemCount: _playlists.length,
-                      itemBuilder: (context, index) {
-                        final playlist = _playlists[index];
-                        return ListTile(
-                          leading: playlist['images'] != null && playlist['images'].isNotEmpty
-                              ? Image.network(
-                                  playlist['images'][0]['url'],
-                                  width: 80,
-                                  height: 80,
-                                  fit: BoxFit.cover,
-                                )
-                              : const Icon(Icons.music_note, size: 80),
-                          title: Text(
-                            playlist['name'] ?? 'Sem nome',
-                            style: const TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                          subtitle: Text(
-                            '${playlist['tracks']['total']} músicas',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          onTap: () async {
-                            final playlistId = playlist['id'];
-                            final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
-                            final accessToken = profileProvider.accessToken;
+              ? Column(
+                  children: [
+                    Expanded(
+                      child: _tracks.isEmpty
+                          ? ListView.builder(
+                              itemCount: _playlists.length,
+                              itemBuilder: (context, index) {
+                                final playlist = _playlists[index];
+                                return ListTile(
+                                  leading: playlist['images'] != null && playlist['images'].isNotEmpty
+                                      ? Image.network(
+                                          playlist['images'][0]['url'],
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : const Icon(Icons.music_note, size: 80),
+                                  title: Text(
+                                    playlist['name'] ?? 'No name',
+                                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                                  ),
+                                  subtitle: Text(
+                                    '${playlist['tracks']['total']} tracks',
+                                    style: const TextStyle(color: Colors.white70),
+                                  ),
+                                  onTap: () async {
+                                    final playlistId = playlist['id'];
+                                    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+                                    final accessToken = profileProvider.accessToken;
 
-                            if (accessToken != null) {
-                              await _fetchPlaylistTracks(playlistId, accessToken);
-                            }
-                          },
-                        );
-                      },
-                    )
-                  : ListView.builder(
-                      itemCount: _tracks.length,
-                      itemBuilder: (context, index) {
-                        final track = _tracks[index]['track'];
-                        final previewUrl = track['preview_url'];
+                                    if (accessToken != null) {
+                                      await _fetchPlaylistTracks(playlistId, accessToken);
+                                    }
+                                  },
+                                );
+                              },
+                            )
+                          : ListView.builder(
+                              itemCount: _tracks.length,
+                              itemBuilder: (context, index) {
+                                final track = _tracks[index]['track'];
+                                final trackName = track['name'];
+                                final trackArtist = track['artists'][0]['name'];
+                                final trackPreviewUrl = track['preview_url'];
 
-                        return ListTile(
-                          title: Text(
-                            track['name'],
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          subtitle: Text(
-                            track['artists'][0]['name'],
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          trailing: previewUrl != null
-                              ? const Icon(Icons.play_arrow, color: Colors.white)
-                              : const Icon(Icons.block, color: Colors.redAccent),
-                          onTap: () {
-                            _playTrack(previewUrl);
-                          },
-                        );
-                      },
-                    )
+                                return ListTile(
+                                  leading: track['album']['images'] != null && track['album']['images'].isNotEmpty
+                                      ? Image.network(
+                                          track['album']['images'][0]['url'],
+                                          width: 60,
+                                          height: 60,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : const Icon(Icons.music_note),
+                                  title: Text(
+                                    trackName ?? 'Nome não disponível',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  subtitle: Text(
+                                    trackArtist ?? 'Artista desconhecido',
+                                    style: const TextStyle(color: Colors.white70),
+                                  ),
+                                  onTap: () async {
+                                    await _playTrack(trackPreviewUrl);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                    if (_currentTrackName != null && _currentTrackArtist != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          'Now Playing: $_currentTrackName by $_currentTrackArtist',
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ],
+                )
               : Center(
                   child: ElevatedButton(
                     onPressed: _authenticateSpotify,
-                    child: const Text('Login com Spotify'),
+                    child: const Text("Sign in with Spotify"),
                   ),
                 ),
     );
