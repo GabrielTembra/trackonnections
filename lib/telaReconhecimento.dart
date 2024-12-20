@@ -16,6 +16,8 @@ class _AudioRecorderState extends State<AudioRecorder> {
   Timer? _timer;
   html.MediaRecorder? _mediaRecorder;
   List<html.Blob> _audioChunks = [];
+  bool isRecording = false;
+  String? recordedFilePath;
 
   @override
   void dispose() {
@@ -165,10 +167,17 @@ class _AudioRecorderState extends State<AudioRecorder> {
           final audioBlob = html.Blob(_audioChunks);
           final url = html.Url.createObjectUrlFromBlob(audioBlob);
           recorderState.stopRecording(url);
+          setState(() {
+            recordedFilePath = url; // Armazenando o caminho para reprodução
+          });
         });
 
         _mediaRecorder?.start();
         recorderState.startRecording();
+
+        setState(() {
+          isRecording = true;
+        });
 
         Future.delayed(const Duration(seconds: 12), () {
           if (recorderState.isRecording) {
@@ -178,8 +187,8 @@ class _AudioRecorderState extends State<AudioRecorder> {
       } catch (e) {
         debugPrint('Erro ao iniciar gravação: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível acessar o microfone.')))
-        ;
+          const SnackBar(content: Text('Não foi possível acessar o microfone.')),
+        );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -190,6 +199,9 @@ class _AudioRecorderState extends State<AudioRecorder> {
 
   Future<void> _stop() async {
     _mediaRecorder?.stop();
+    setState(() {
+      isRecording = false;
+    });
   }
 
   Future<void> _pause(RecorderState recorderState) async {
@@ -220,12 +232,23 @@ class AudioPlayerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.play_arrow, color: Colors.white),
-      onPressed: () {
-        html.window.open(filePath, 'audio');
-      },
+    return Column(
+      children: [
+        const Text(
+          'Clique para reproduzir o áudio:',
+          style: TextStyle(color: Colors.white),
+        ),
+        IconButton(
+          icon: const Icon(Icons.play_arrow, color: Colors.white),
+          onPressed: () {
+            html.AudioElement audio = html.AudioElement()
+              ..src = filePath
+              ..controls = true
+              ..autoplay = true;
+            html.document.body?.append(audio);  // Reproduzindo o áudio na tela
+          },
+        ),
+      ],
     );
   }
 }
-

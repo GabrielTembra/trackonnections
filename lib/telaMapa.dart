@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
-import 'package:provider/provider.dart'; // Para integrar com o ProfileProvider
+import 'package:provider/provider.dart';
 import 'profile_provider.dart'; // Importe seu ProfileProvider
 
 void main() {
@@ -20,7 +20,47 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const MusicMapScreen(),
+      home: const MainTabScreen(),
+    );
+  }
+}
+
+class MainTabScreen extends StatefulWidget {
+  const MainTabScreen({Key? key}) : super(key: key);
+
+  @override
+  _MainTabScreenState createState() => _MainTabScreenState();
+}
+
+class _MainTabScreenState extends State<MainTabScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Trackonnections'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Mapa'),
+            Tab(text: 'Outras Funcionalidades'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: const [
+          MusicMapScreen(), // Mapa
+          OtherScreen(), // Outra tela
+        ],
+      ),
     );
   }
 }
@@ -32,7 +72,7 @@ class MusicMapScreen extends StatefulWidget {
   State<MusicMapScreen> createState() => _MusicMapScreenState();
 }
 
-class _MusicMapScreenState extends State<MusicMapScreen> {
+class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAliveClientMixin {
   late GoogleMapController mapController;
   LatLng _currentLocation = const LatLng(-23.550520, -46.633308); // Coordenadas iniciais (São Paulo)
   final List<Marker> _markers = [];
@@ -51,15 +91,13 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
     _initializeLocation();
   }
 
-  /// Inicializa o mapa e atualiza a localização atual com marcador.
   Future<void> _initializeLocation() async {
     final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
 
-    // Verifique se a localização foi carregada do provedor
     if (profileProvider.latitude != 0.0 && profileProvider.longitude != 0.0) {
       setState(() {
         _currentLocation = LatLng(profileProvider.latitude, profileProvider.longitude);
-        _markers.clear(); // Limpa os marcadores antigos antes de adicionar o novo
+        _markers.clear();
         _markers.add(
           Marker(
             markerId: const MarkerId('trackonnections'),
@@ -70,17 +108,14 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
         );
       });
 
-      // Centraliza o mapa na localização atual
       mapController.animateCamera(
         CameraUpdate.newLatLngZoom(_currentLocation, 15),
       );
     } else {
-      // Caso não tenha localização, use a função para obter a localização atual do dispositivo
       await _getDeviceLocation();
     }
   }
 
-  /// Função para obter a localização do dispositivo
   Future<void> _getDeviceLocation() async {
     final Location location = Location();
 
@@ -105,16 +140,14 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
 
     LocationData currentLocation = await location.getLocation();
 
-    // Atualiza a localização no ProfileProvider
     Provider.of<ProfileProvider>(context, listen: false).saveProfileData(
       latitude: currentLocation.latitude,
       longitude: currentLocation.longitude,
     );
 
-    // Atualiza a localização do mapa
     setState(() {
       _currentLocation = LatLng(currentLocation.latitude!, currentLocation.longitude!);
-      _markers.clear(); // Limpa os marcadores antigos antes de adicionar o novo
+      _markers.clear();
       _markers.add(
         Marker(
           markerId: const MarkerId('trackonnections'),
@@ -125,7 +158,6 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
       );
     });
 
-    // Centraliza o mapa na localização atual
     mapController.animateCamera(
       CameraUpdate.newLatLngZoom(_currentLocation, 15),
     );
@@ -133,6 +165,8 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Chama o método da superclasse para manter o estado
+
     return Scaffold(
       body: GoogleMap(
         initialCameraPosition: CameraPosition(
@@ -143,9 +177,23 @@ class _MusicMapScreenState extends State<MusicMapScreen> {
           mapController = controller;
         },
         markers: Set<Marker>.of(_markers),
-        myLocationEnabled: true, // Mostra o ponto azul da localização atual
-        myLocationButtonEnabled: true, // Habilita o botão para focar na localização
+        myLocationEnabled: true,
+        myLocationButtonEnabled: true,
       ),
+    );
+  }
+
+  @override
+  bool get wantKeepAlive => true; // Mantém a tela viva mesmo ao mudar de aba
+}
+
+class OtherScreen extends StatelessWidget {
+  const OtherScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text('Outras Funcionalidades Aqui'),
     );
   }
 }
