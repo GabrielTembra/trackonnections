@@ -2,12 +2,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
 
 class ProfileProvider extends ChangeNotifier {
   // Credenciais do Spotify
-  final String _clientId = 'fce00c0056db400cb5276479df7e6ab7'; // Substitua pelo seu client_id
-  final String _clientSecret = 'd009b17417f24a048be9432529b7d026'; // Substitua pelo seu client_secret
-  final String _redirectUri = 'https://trackonnections.web.app/spotify'; // URL de redirecionamento configurada no Spotify
+  final String clientId = 'fce00c0056db400cb5276479df7e6ab7'; // Substitua pelo seu client_id
+  final String clientSecret = 'd009b17417f24a048be9432529b7d026'; // Substitua pelo seu client_secret
+  final String redirectUri = 'https://trackonnections.web.app/spotify'; // URL de redirecionamento configurada no Spotify
 
   // Variáveis do perfil
   Uint8List? _profileImageBytes;
@@ -21,6 +22,10 @@ class ProfileProvider extends ChangeNotifier {
   bool _isRecording = false;
   String? _audioPath; // Caminho do arquivo de áudio
 
+  // Variáveis de localização
+  double _latitude = 0.0;
+  double _longitude = 0.0;
+
   // Getters
   Uint8List? get profileImageBytes => _profileImageBytes;
   Color get profileColor => _profileColor;
@@ -31,6 +36,9 @@ class ProfileProvider extends ChangeNotifier {
   
   bool get isRecording => _isRecording;
   String? get audioPath => _audioPath;
+
+  double get latitude => _latitude; // Getter para latitude
+  double get longitude => _longitude; // Getter para longitude
 
   // Getter for the access token (Spotify)
   String? get accessToken => _spotifyToken;
@@ -53,6 +61,9 @@ class ProfileProvider extends ChangeNotifier {
     _audioPath = prefs.getString('last_recording_path'); // Carrega o caminho da última gravação
     _spotifyToken = prefs.getString('spotify_token'); // Carrega o token do Spotify
     
+    _latitude = prefs.getDouble('latitude') ?? 0.0; // Carrega a latitude
+    _longitude = prefs.getDouble('longitude') ?? 0.0; // Carrega a longitude
+
     notifyListeners(); // Notifica a UI para atualizar
   }
 
@@ -65,6 +76,8 @@ class ProfileProvider extends ChangeNotifier {
     Uint8List? profileImageBytes,
     String? audioPath,
     String? spotifyToken, // Adicionando o parâmetro de token
+    double? latitude,
+    double? longitude,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     
@@ -83,6 +96,9 @@ class ProfileProvider extends ChangeNotifier {
 
     if (spotifyToken != null) await prefs.setString('spotify_token', spotifyToken); // Salvar o token do Spotify
 
+    if (latitude != null) await prefs.setDouble('latitude', latitude); // Salvar a latitude
+    if (longitude != null) await prefs.setDouble('longitude', longitude); // Salvar a longitude
+
     // Atualiza as variáveis internas e notifica a UI
     _profileImageBytes = profileImageBytes;
     _profileColor = profileColor ?? _profileColor;
@@ -91,6 +107,8 @@ class ProfileProvider extends ChangeNotifier {
     _profilePlaylist = playlist ?? _profilePlaylist;
     _audioPath = audioPath ?? _audioPath;
     _spotifyToken = spotifyToken ?? _spotifyToken; // Atualiza o token do Spotify
+    _latitude = latitude ?? _latitude;
+    _longitude = longitude ?? _longitude; // Atualiza a localização
 
     notifyListeners();
   }
@@ -141,14 +159,32 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Função para definir o estado de gravação manualmente
-  void setRecordingState(bool isRecording) {
-    _isRecording = isRecording;
-    notifyListeners();
+  // Função para obter a localização atual do usuário
+  Future<void> getCurrentLocation() async {
+    // Verifique se as permissões de localização estão concedidas
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Exiba uma mensagem de erro ou lide com o caso onde o serviço de localização está desabilitado
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Exiba uma mensagem de erro ou lide com o caso onde a permissão é negada
+        return;
+      }
+    }
+
+    // Obtenha a posição atual do usuário
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+
+    // Atualize a localização e salve no SharedPreferences
+    _latitude = position.latitude;
+    _longitude = position.longitude;
+    saveProfileData(latitude: _latitude, longitude: _longitude);
+    
+    notifyListeners(); // Notificar a UI para atualizar
   }
-  
-  // Funções para acessar as credenciais do Spotify
-  String get clientId => _clientId;
-  String get clientSecret => _clientSecret;
-  String get redirectUri => _redirectUri;
 }

@@ -107,6 +107,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
         },
       );
 
+      // Lança o URL para autenticação do Spotify
       await _launchURLInWebView(authorizationUrl.toString());
     } catch (e) {
       debugPrint("Authentication Error: $e");
@@ -137,6 +138,9 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
             _isAuthenticated = true;
           });
           await _fetchPlaylists(accessToken);
+
+          // Aqui fazemos o pop para voltar à tela anterior após a autenticação
+          Navigator.pop(context); // Adiciona isso aqui
         }
       }
     });
@@ -288,41 +292,30 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
                                   leading: track['album']['images'] != null && track['album']['images'].isNotEmpty
                                       ? Image.network(
                                           track['album']['images'][0]['url'],
-                                          width: 60,
-                                          height: 60,
+                                          width: 50,
+                                          height: 50,
                                           fit: BoxFit.cover,
                                         )
                                       : const Icon(Icons.music_note),
                                   title: Text(
-                                    trackName ?? 'Nome não disponível',
-                                    style: const TextStyle(color: Colors.white),
+                                    trackName,
+                                    style: const TextStyle(color: Colors.white, fontSize: 18),
                                   ),
                                   subtitle: Text(
-                                    trackArtist ?? 'Artista desconhecido',
+                                    trackArtist,
                                     style: const TextStyle(color: Colors.white70),
                                   ),
-                                  onTap: () async {
-                                    await _playTrack(trackPreviewUrl);
-                                  },
+                                  onTap: () => _playTrack(trackPreviewUrl),
                                 );
                               },
                             ),
                     ),
-                    if (_currentTrackName != null && _currentTrackArtist != null) ...[
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          'Now Playing: $_currentTrackName by $_currentTrackArtist',
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                      ),
-                    ],
                   ],
                 )
               : Center(
                   child: ElevatedButton(
                     onPressed: _authenticateSpotify,
-                    child: const Text("Sign in with Spotify"),
+                    child: const Text('Authenticate with Spotify'),
                   ),
                 ),
     );
