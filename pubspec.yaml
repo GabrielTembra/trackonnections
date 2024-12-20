@@ -29,6 +29,7 @@ dependencies:
   google_maps_flutter_web: ^0.5.10
   google_sign_in: ^6.2.2
   image_picker: ^1.1.2
+  just_audio: ^0.9.42
   latlong2: ^0.9.1
   map: ^2.0.2
   maps_launcher: ^2.2.1
