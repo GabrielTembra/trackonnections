@@ -24,6 +24,7 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
   Color _profileColor = const Color(0xFF4A148C);
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _audioPath;
+  String? _userLogin;
 
   @override
   void initState() {
@@ -86,6 +87,7 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
       descriptionController.text = prefs.getString('profile_description') ?? '';
       playlistController.text = prefs.getString('profile_playlist') ?? '';
       _audioPath = prefs.getString('last_recording_path');
+      _userLogin = prefs.getString('user_login'); // Carrega o login salvo
     });
   }
 
@@ -116,6 +118,25 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
         ],
       ),
     );
+  }
+
+  // Função para limpar as informações do perfil e redirecionar para a tela de login
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Limpa todos os dados no SharedPreferences
+
+    // Notifica o ProfileProvider para limpar os dados também
+    Provider.of<ProfileProvider>(context, listen: false).saveProfileData(
+      name: '',
+      description: '',
+      playlist: '',
+      profileColor: const Color(0xFF4A148C),
+      profileImageBytes: null,
+      audioPath: null,
+    );
+
+    // Navega de volta para a tela de login (ou qualquer outra tela desejada)
+    Navigator.pushReplacementNamed(context, '/login'); // Substitua '/login' pela rota correta para a tela de login
   }
 
   Widget _buildProfileImage() {
@@ -223,6 +244,18 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
             ElevatedButton(
               onPressed: _playLastRecording,
               child: const Text('Reproduzir Áudio'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _logout,
+              child: const Text('Sair'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            // Exibe o login salvo
+            Text(
+              _userLogin != null ? 'Login: $_userLogin' : 'Login não encontrado',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ],
         ),

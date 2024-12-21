@@ -4,12 +4,12 @@ import 'package:trackonnections/telaBase.dart';
 import 'package:trackonnections/telaMapa.dart';
 import 'package:trackonnections/telaSpotify.dart';
 import 'package:trackonnections/telaReconhecimento.dart';
-import 'package:trackonnections/telaLogin.dart'; // Certifique-se de que o caminho da telaLogin.dart está correto
+import 'package:trackonnections/telaLogin.dart';
 import 'package:provider/provider.dart'; // Para o Provider
 import 'package:trackonnections/profile_provider.dart'; // Importe o seu ProfileProvider
 import 'package:trackonnections/telaRecorder.dart'; // Importe o RecorderState
 import 'firebase_options.dart'; // Importe as credenciais geradas pela FlutterFire CLI
-import 'package:trackonnections/telaRecorder.dart'; // Importando a tela de gravação de áudio, se necessário
+import 'package:shared_preferences/shared_preferences.dart'; // Para SharedPreferences
 
 void main() async {
   // Garantir que os widgets estejam inicializados
@@ -41,15 +41,49 @@ class TrackConnectionsApp extends StatelessWidget {
           primarySwatch: Colors.deepPurple,
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-        initialRoute: '/login', // Defina a rota inicial
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/telabase': (context) => const HomeScreen(),
-          '/spotify': (context) => const SpotifyAuthScreen(), 
-          '/mapa': (context) => const MusicMapScreen(),
-          '/gravacao': (context) => AudioRecorder(onStop: (String path) {}),
-        },
+        home: FutureBuilder<String>(
+          future: _getInitialRoute(), // Chama a função assíncrona que retorna a tela inicial
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator()); // Aguarda a resposta
+            } else if (snapshot.hasData) {
+              return Navigator(
+                onGenerateRoute: (settings) {
+                  switch (settings.name) {
+                    case '/login':
+                      return MaterialPageRoute(builder: (_) => const LoginScreen());
+                    case '/telabase':
+                      return MaterialPageRoute(builder: (_) => const HomeScreen());
+                    case '/spotify':
+                      return MaterialPageRoute(builder: (_) => const SpotifyAuthScreen());
+                    case '/mapa':
+                      return MaterialPageRoute(builder: (_) => const MusicMapScreen());
+                    case '/gravacao':
+                      return MaterialPageRoute(builder: (_) => AudioRecorder(onStop: (String path) {}));
+                    default:
+                      return null;
+                  }
+                },
+                initialRoute: snapshot.data, // Define a rota inicial com base no snapshot
+              );
+            } else {
+              return const Center(child: Text('Erro ao verificar o login'));
+            }
+          },
+        ),
       ),
     );
+  }
+
+  // Função para verificar se o login está salvo nos SharedPreferences
+  Future<String> _getInitialRoute() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('email');
+    final password = prefs.getString('password');
+    if (email != null && password != null) {
+      return '/telabase'; // Redireciona para a tela principal se o login estiver salvo
+    } else {
+      return '/login'; // Redireciona para a tela de login se não houver login salvo
+    }
   }
 }

@@ -1,32 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:trackonnections/telaBase.dart';
-import 'package:trackonnections/telaSpotify.dart';
-import 'package:trackonnections/telaPerfil.dart'; // Importe a tela de personalização
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'telaBase.dart'; // Certifique-se de que a tela base está implementada corretamente
+import 'telaPerfil.dart'; // Tela de personalização de perfil
 
-void main() {
-  runApp(const Telalogin());
-}
-
-class Telalogin extends StatelessWidget {
-  const Telalogin({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'TrackConnections',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        scaffoldBackgroundColor: const Color(0xFF4A148C), // Fundo roxo escuro
-      ),
-      home: const LoginScreen(),
-    );
-  }
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  // Método para salvar login e senha no Firestore
+  Future<void> saveLoginToFirestore(String email, String password) async {
+    final firestore = FirebaseFirestore.instance;
+
+    try {
+      await firestore.collection('users').add({
+        'email': email,
+        'password': password,
+        'timestamp': FieldValue.serverTimestamp(), // Adiciona um timestamp
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login salvo com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao salvar login: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Método para salvar login e senha no SharedPreferences
+  Future<void> saveLoginToSharedPreferences(String email, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('email', email);  // Salva o email
+    await prefs.setString('password', password);  // Salva a senha
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,11 +55,11 @@ class LoginScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF4A148C),
         elevation: 0,
+        automaticallyImplyLeading: false, // Removendo o ícone de volta
         actions: [
           IconButton(
             icon: const Icon(Icons.person, color: Colors.white),
             onPressed: () {
-              // Exibe o SnackBar com o botão
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text('Deseja personalizar seu perfil?'),
@@ -53,7 +73,6 @@ class LoginScreen extends StatelessWidget {
                     label: 'Personalizar',
                     textColor: Colors.white,
                     onPressed: () {
-                      // Redireciona para a tela de personalização de perfil
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -120,8 +139,9 @@ class LoginScreen extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const TextField(
-                    decoration: InputDecoration(
+                  child: TextField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
                       hintText: 'Digite seu Email',
                       hintStyle: TextStyle(color: Color(0xFF4A148C)),
                       border: InputBorder.none,
@@ -137,8 +157,9 @@ class LoginScreen extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const TextField(
-                    decoration: InputDecoration(
+                  child: TextField(
+                    controller: passwordController,
+                    decoration: const InputDecoration(
                       hintText: 'Digite sua Senha',
                       hintStyle: TextStyle(color: Color(0xFF4A148C)),
                       border: InputBorder.none,
@@ -150,14 +171,32 @@ class LoginScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () {
-                    // Navega para a HomeScreen ao pressionar o botão
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HomeScreen(),
-                      ),
-                    );
+                  onPressed: () async {
+                    final email = emailController.text.trim();
+                    final password = passwordController.text.trim();
+
+                    if (email.isNotEmpty && password.isNotEmpty) {
+                      // Salva login e senha no Firestore
+                      await saveLoginToFirestore(email, password);
+
+                      // Salva login e senha no SharedPreferences
+                      await saveLoginToSharedPreferences(email, password);
+
+                      // Navega para a tela principal
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HomeScreen(),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Por favor, preencha todos os campos.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,

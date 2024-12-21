@@ -103,12 +103,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
         backgroundColor: const Color(0xFF6A1B9A),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
         actions: [
           // Foto de perfil ou ícone de pessoa
           GestureDetector(
