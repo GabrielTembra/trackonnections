@@ -116,10 +116,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               backgroundColor: profileProvider.profileColor,
               radius: 20,
               backgroundImage: profileProvider.profileImageBytes != null
-                  ? MemoryImage(profileProvider.profileImageBytes!)
+                  ? MemoryImage(profileProvider.profileImageBytes!) // Se houver imagem, exibe ela
                   : null,
-              child: profileProvider.profileImageBytes == null
-                  ? Icon(Icons.person, color: profileProvider.profileColor)
+              child: profileProvider.profileImageBytes == null // Se não houver imagem, exibe o ícone de pessoa
+                  ? const Icon(
+                      Icons.person,
+                      color: Colors.white, // Contraste com a cor de fundo
+                      size: 20,
+                    )
                   : null,
             ),
           ),

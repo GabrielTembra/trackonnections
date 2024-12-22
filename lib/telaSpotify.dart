@@ -23,6 +23,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
   InAppWebViewController? _webViewController;
   late AppLinks appLinks;
   Map<String, dynamic>? _currentlyPlayingTrack;
+  String? _selectedPlaylistId; // Armazena o ID da playlist selecionada
 
   @override
   void initState() {
@@ -205,7 +206,6 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
             _currentlyPlayingTrack = data['item'];
           });
 
-          // Exibir a música que está tocando no SnackBar
           final trackName = _currentlyPlayingTrack!['name'];
           final artistName = _currentlyPlayingTrack!['artists'][0]['name'];
           ScaffoldMessenger.of(context).showSnackBar(
@@ -221,6 +221,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
     }
   }
 
+  // Função para buscar as faixas da playlist
   Future<void> _fetchPlaylistTracks(String playlistId, String accessToken) async {
     final url = Uri.parse("https://api.spotify.com/v1/playlists/$playlistId/tracks");
 
@@ -233,7 +234,8 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          _tracks = data['items'];
+          _tracks = data['items']; // Atualiza a lista de faixas
+          _selectedPlaylistId = playlistId; // Atualiza a playlist selecionada
         });
       }
     } catch (e) {
@@ -285,28 +287,49 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
                           return ListTile(
                             title: Text(
                               playlist['name'],
-                              style: const TextStyle(color: Colors.white, fontSize: 18),
+                              style: const TextStyle(color: Colors.white),
                             ),
-                            subtitle: Text(
-                              playlist['owner']['display_name'],
-                              style: const TextStyle(color: Colors.white70),
-                            ),
+                            leading: playlist['images'].isNotEmpty
+                                ? Image.network(playlist['images'][0]['url'])
+                                : const Icon(Icons.music_note, color: Colors.white),
                             onTap: () async {
-                              final accessToken = Provider.of<ProfileProvider>(context, listen: false).accessToken;
-                              if (accessToken != null) {
-                                await _fetchPlaylistTracks(playlist['id'], accessToken);
-                              }
+                              final profileProvider =
+                                  Provider.of<ProfileProvider>(context, listen: false);
+                              await _fetchPlaylistTracks(
+                                  playlist['id'], profileProvider.accessToken!);
                             },
                           );
                         },
                       ),
                     ),
+                    if (_tracks.isNotEmpty)
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _tracks.length,
+                          itemBuilder: (context, index) {
+                            final track = _tracks[index]['track'];
+                            return ListTile(
+                              title: Text(
+                                track['name'],
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              subtitle: Text(
+                                track['artists'][0]['name'],
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                              leading: track['album']['images'].isNotEmpty
+                                  ? Image.network(track['album']['images'][0]['url'])
+                                  : const Icon(Icons.music_note, color: Colors.white),
+                            );
+                          },
+                        ),
+                      ),
                   ],
                 )
               : Center(
                   child: ElevatedButton(
                     onPressed: _authenticateSpotify,
-                    child: const Text('Authenticate with Spotify'),
+                    child: const Text('Login with Spotify'),
                   ),
                 ),
     );
