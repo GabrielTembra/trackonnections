@@ -51,9 +51,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF4A148C), // Fundo roxo escuro
+      backgroundColor: const Color(0xFF6A1B9A), // Fundo roxo alterado
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4A148C),
+        backgroundColor: const Color(0xFF6A1B9A), // Cor da appBar alterada
         elevation: 0,
         automaticallyImplyLeading: false, // Removendo o ícone de volta
         actions: [
@@ -143,9 +143,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: emailController,
                     decoration: const InputDecoration(
                       hintText: 'Digite seu Email',
-                      hintStyle: TextStyle(color: Color(0xFF4A148C)),
+                      hintStyle: TextStyle(color: Color(0xFF6A1B9A)), // Cor do hintText alterada
                       border: InputBorder.none,
-                      prefixIcon: Icon(Icons.mail, color: Color(0xFF4A148C)),
+                      prefixIcon: Icon(Icons.mail, color: Color(0xFF6A1B9A)), // Cor do ícone alterada
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                     keyboardType: TextInputType.emailAddress,
@@ -161,9 +161,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: passwordController,
                     decoration: const InputDecoration(
                       hintText: 'Digite sua Senha',
-                      hintStyle: TextStyle(color: Color(0xFF4A148C)),
+                      hintStyle: TextStyle(color: Color(0xFF6A1B9A)), // Cor do hintText alterada
                       border: InputBorder.none,
-                      prefixIcon: Icon(Icons.lock, color: Color(0xFF4A148C)),
+                      prefixIcon: Icon(Icons.lock, color: Color(0xFF6A1B9A)), // Cor do ícone alterada
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                     obscureText: true,
@@ -200,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF4A148C),
+                    foregroundColor: const Color(0xFF6A1B9A), // Cor do botão alterada
                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

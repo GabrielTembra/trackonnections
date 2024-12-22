@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:http/http.dart' as http;  // Para fazer o fetch de playlists
+import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class ProfileProvider extends ChangeNotifier {
   // Credenciais do Spotify
-  final String clientId = 'fce00c0056db400cb5276479df7e6ab7'; 
+  final String clientId = 'fce00c0056db400cb5276479df7e6ab7';
   final String clientSecret = 'd009b17417f24a048be9432529b7d026';
-  final String redirectUri = 'https://trackonnections.web.app/spotify'; 
+  final String redirectUri = 'https://trackonnections.web.app/spotify';
 
   // Variáveis do perfil
   Uint8List? _profileImageBytes;
@@ -22,7 +23,7 @@ class ProfileProvider extends ChangeNotifier {
 
   // Variáveis para o estado de gravação
   bool _isRecording = false;
-  String? _audioPath; 
+  String? _audioPath;
 
   // Variáveis de localização
   double _latitude = 0.0;
@@ -42,6 +43,9 @@ class ProfileProvider extends ChangeNotifier {
   List<dynamic> _playlists = [];
   bool _isLoadingPlaylists = false;
 
+  // Instância do Google Map
+  GoogleMapController? _mapController;
+
   // Getters
   Uint8List? get profileImageBytes => _profileImageBytes;
   Color get profileColor => _profileColor;
@@ -58,9 +62,11 @@ class ProfileProvider extends ChangeNotifier {
   String? get firebaseEmail => _firebaseEmail;
   String? get firebaseAuthToken => _firebaseAuthToken;
   bool get isAuthenticated => _isAuthenticated;
-  
+
   List<dynamic> get playlists => _playlists;
   bool get isLoadingPlaylists => _isLoadingPlaylists;
+
+  GoogleMapController? get mapController => _mapController;
 
   // Método para alternar entre as telas
   void changePage(int index) {
@@ -142,7 +148,7 @@ class ProfileProvider extends ChangeNotifier {
         'latitude': _latitude,
         'longitude': _longitude,
         'firebaseEmail': _firebaseEmail,
-      }, SetOptions(merge: true)); // Merge para atualizar dados existentes
+      }, SetOptions(merge: true));
 
       print("Profile data saved to Firestore");
     } catch (e) {
@@ -209,6 +215,23 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Função para configurar o controlador do mapa
+  void setMapController(GoogleMapController controller) {
+    _mapController = controller;
+    notifyListeners();
+  }
+
+  // Função para mover a câmera do mapa para a localização atual
+  void moveToCurrentLocation(LatLng currentLocation) {
+    if (_mapController != null) {
+      _mapController!.moveCamera(
+        CameraUpdate.newLatLng(
+          LatLng(_latitude, _longitude),
+        ),
+      );
+    }
+  }
+
   // Função para definir o e-mail do Firebase
   void setFirebaseEmail(String email) {
     _firebaseEmail = email;
@@ -270,22 +293,14 @@ class ProfileProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     if (_isRecording) {
-      // Pausar gravação
       _isRecording = false;
       notifyListeners();
-      // Aqui você pode adicionar a lógica para parar a gravação
-      // e salvar o caminho do arquivo de áudio, por exemplo:
-      // _audioPath = await stopRecording();
       if (_audioPath != null) {
         await prefs.setString('last_recording_path', _audioPath!);
       }
     } else {
-      // Iniciar gravação
       _isRecording = true;
       notifyListeners();
-      // Aqui você pode adicionar a lógica para começar a gravação
-      // como começar a gravar e salvar o caminho do arquivo
-      // _audioPath = await startRecording();
     }
   }
 }

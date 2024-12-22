@@ -21,7 +21,7 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController playlistController = TextEditingController();
   Uint8List? _profileImageBytes;
-  Color _profileColor = const Color(0xFF4A148C);
+  Color _profileColor = const Color(0xFF6A1B9A); // Novo roxo
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _audioPath;
   String? _userLogin;
@@ -123,14 +123,22 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
   // Função para limpar as informações do perfil e redirecionar para a tela de login
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Limpa todos os dados no SharedPreferences
+    
+    // Limpa todos os dados no SharedPreferences (opcional)
+    await prefs.clear(); 
+
+    // Remove especificamente o token de acesso
+    await prefs.remove('spotify_token'); // Remove a chave do token
+
+    // Remove o login do usuário
+    await prefs.remove('user_login'); // Remove a chave de login
 
     // Notifica o ProfileProvider para limpar os dados também
     Provider.of<ProfileProvider>(context, listen: false).saveProfileData(
       name: '',
       description: '',
       playlist: '',
-      profileColor: const Color(0xFF4A148C),
+      profileColor: const Color(0xFF6A1B9A), // Novo roxo
       profileImageBytes: null,
       audioPath: null,
     );
@@ -186,12 +194,12 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.black),
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.deepPurple),
+          labelStyle: const TextStyle(color: Color(0xFF6A1B9A)), // Novo roxo
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.deepPurple),
+            borderSide: BorderSide(color: Color(0xFF6A1B9A)), // Novo roxo
           ),
           enabledBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.deepPurple),
+            borderSide: BorderSide(color: Color(0xFF6A1B9A)), // Novo roxo
           ),
         ),
       ),
@@ -201,9 +209,9 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF4A148C),
+      backgroundColor: const Color(0xFF6A1B9A), // Novo roxo
       appBar: AppBar(
-        backgroundColor: _profileColor,
+        backgroundColor: _profileColor, // Novo roxo
         elevation: 0,
         title: const Text('Personalizar Perfil',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
@@ -254,8 +262,8 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
             const SizedBox(height: 16),
             // Exibe o login salvo
             Text(
-              _userLogin != null ? 'Login: $_userLogin' : 'Login não encontrado',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              _userLogin != null ? 'Login: $_userLogin' : 'Usuário não logado',
+              style: const TextStyle(color: Colors.white),
             ),
           ],
         ),
