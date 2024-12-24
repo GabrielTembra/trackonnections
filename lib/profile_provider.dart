@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:spotify/spotify.dart';
 
 class ProfileProvider extends ChangeNotifier {
   // Credenciais do Spotify
@@ -46,6 +47,15 @@ class ProfileProvider extends ChangeNotifier {
   // Instância do Google Map
   GoogleMapController? _mapController;
 
+  // Variáveis de música
+  bool _isMusicPlaying = false;
+  String _currentSongName = '';
+  String _currentSongArtist = '';
+  String _albumArtUrl = '';  // URL da arte do álbum
+
+  // Hotspot Status
+  bool _isHotspotActive = false;
+
   // Getters
   Uint8List? get profileImageBytes => _profileImageBytes;
   Color get profileColor => _profileColor;
@@ -62,10 +72,13 @@ class ProfileProvider extends ChangeNotifier {
   String? get firebaseEmail => _firebaseEmail;
   String? get firebaseAuthToken => _firebaseAuthToken;
   bool get isAuthenticated => _isAuthenticated;
-
+  bool get isHotspotActive => _isHotspotActive;
+  bool get isMusicPlaying => _isMusicPlaying;
+  String get currentSongName => _currentSongName;
+  String get currentSongArtist => _currentSongArtist;
+  String get albumArtUrl => _albumArtUrl;
   List<dynamic> get playlists => _playlists;
   bool get isLoadingPlaylists => _isLoadingPlaylists;
-
   GoogleMapController? get mapController => _mapController;
 
   // Método para alternar entre as telas
@@ -230,77 +243,42 @@ class ProfileProvider extends ChangeNotifier {
         ),
       );
     }
-  }
-
-  // Função para definir o e-mail do Firebase
-  void setFirebaseEmail(String email) {
-    _firebaseEmail = email;
-    saveProfileData(firebaseEmail: email);
     notifyListeners();
   }
 
-  // Função para definir o token de autenticação do Firebase
-  void setFirebaseAuthToken(String token) {
-    _firebaseAuthToken = token;
-    saveProfileData(firebaseAuthToken: token);
+  // Função para definir a música que está tocando
+  void setCurrentlyPlayingTrack(String songName, String artistName, Map<String, dynamic> albumData) {
+    _currentSongName = songName;
+    _currentSongArtist = artistName;
+    _albumArtUrl = albumData['images'][0]['url']; // Extrai a URL da arte do álbum
+    _isMusicPlaying = true;
+
+    // Notificar listeners sobre a atualização do estado de música
     notifyListeners();
   }
 
-  // Função para definir o accessToken
+  // Função para definir o Access Token
   void setAccessToken(String token) {
     _accessToken = token;
-    saveProfileData(accessToken: token);
-    notifyListeners();
-  }
-
-  // Função para alterar a cor do perfil
-  void updateProfileColor(Color newColor) {
-    _profileColor = newColor;
-    saveProfileData(profileColor: newColor);
-    notifyListeners();
-  }
-
-  // Função para alterar a imagem do perfil
-  void updateProfileImage(Uint8List newImage) {
-    _profileImageBytes = newImage;
-    saveProfileData(profileImageBytes: newImage);
-    notifyListeners();
-  }
-
-  // Função para alterar o nome do perfil
-  void updateProfileName(String newName) {
-    _profileName = newName;
-    saveProfileData(name: newName);
-    notifyListeners();
-  }
-
-  // Função para alterar a descrição do perfil
-  void updateProfileDescription(String newDescription) {
-    _profileDescription = newDescription;
-    saveProfileData(description: newDescription);
-    notifyListeners();
-  }
-
-  // Função para alterar a playlist
-  void updateProfilePlaylist(String newPlaylist) {
-    _profilePlaylist = newPlaylist;
-    saveProfileData(playlist: newPlaylist);
     notifyListeners();
   }
 
   // Função para alternar o estado de gravação
-  Future<void> toggleRecording() async {
-    final prefs = await SharedPreferences.getInstance();
+  void toggleRecording() {
+    _isRecording = !_isRecording;
+    notifyListeners();
+  }
 
-    if (_isRecording) {
-      _isRecording = false;
-      notifyListeners();
-      if (_audioPath != null) {
-        await prefs.setString('last_recording_path', _audioPath!);
-      }
-    } else {
-      _isRecording = true;
-      notifyListeners();
-    }
+  // Função para iniciar a gravação
+  void startRecording(String audioPath) {
+    _isRecording = true;
+    _audioPath = audioPath;
+    notifyListeners();
+  }
+
+  // Função para parar a gravação
+  void stopRecording() {
+    _isRecording = false;
+    notifyListeners();
   }
 }
