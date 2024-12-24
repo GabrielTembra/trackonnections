@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
-import 'profile_provider.dart';
 
 class MusicMapScreen extends StatefulWidget {
   const MusicMapScreen({Key? key}) : super(key: key);
@@ -13,171 +11,134 @@ class MusicMapScreen extends StatefulWidget {
 }
 
 class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAliveClientMixin {
-  late GoogleMapController mapController;
+  late MapController mapController;
   LatLng? _currentLocation;
   final List<Marker> _markers = [];
-  final Set<Circle> _circles = {};
+  final List<CircleMarker> _circleMarkers = [];
+
+  double _currentZoom = 12.0; // Zoom inicial
 
   @override
   void initState() {
     super.initState();
-    _initializeLocation();
+    mapController = MapController();
+    _initializeLocation(); // Tenta inicializar a localização assim que a tela for carregada
   }
 
-  // Inicializa a localização do dispositivo
+  // Função para inicializar a localização
   Future<void> _initializeLocation() async {
     await _getDeviceLocation();
   }
 
-  // Obtém a localização do dispositivo
+  // Função para obter a localização do dispositivo
   Future<void> _getDeviceLocation() async {
     if (await Geolocator.isLocationServiceEnabled()) {
-      PermissionStatus permissionStatus = await Permission.location.request();
+      try {
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
 
-      if (permissionStatus.isDenied || permissionStatus.isRestricted) {
-        _showLocationPermissionDialog();
-        return;
+        setState(() {
+          _currentLocation = LatLng(position.latitude, position.longitude);
+          _markers.clear();
+          _markers.add(
+            Marker(
+              point: _currentLocation!,
+              width: 80,
+              height: 80,
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blue.withOpacity(0.15),
+                ),
+              ),
+            ),
+          );
+
+          _circleMarkers.clear();
+          _circleMarkers.add(
+            CircleMarker(
+              point: _currentLocation!,
+              color: Colors.blue.withOpacity(0.15),
+              borderColor: Colors.blue.withOpacity(0.15),
+              borderStrokeWidth: 2,
+              useRadiusInMeter: true,
+              radius: 100, // Raio em metros
+            ),
+          );
+        });
+
+        // Atualiza a posição da câmera para a localização atual
+        mapController.move(_currentLocation!, _currentZoom);
+      } catch (e) {
+        // Em vez de exibir o pop-up, você pode tratar o erro de forma silenciosa ou logá-lo
+        print('Erro ao obter a localização: $e');
       }
-
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
-        _circles.clear();
-        _circles.add(
-          Circle(
-            circleId: CircleId('hotspot-circle'),
-            center: _currentLocation!,
-            radius: 10000,
-            fillColor: Colors.blue.withOpacity(0.3),
-            strokeColor: Colors.blue,
-            strokeWidth: 2,
-            onTap: _onHotspotTap, // Exibe a música ao tocar no círculo
-          ),
-        );
-      });
-
-      mapController.animateCamera(
-        CameraUpdate.newLatLngZoom(_currentLocation!, 15),
-      );
     } else {
-      _showLocationServiceDialog();
+      // Em vez de mostrar o pop-up, você pode apenas logar ou agir de outra maneira
+      print('Serviço de localização desativado');
     }
-  }
-
-  // Exibe o diálogo de permissão de localização
-  void _showLocationPermissionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Permissão de Localização'),
-          content: const Text('Este app precisa acessar sua localização para exibir o mapa. Você deseja permitir?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Permitir'),
-              onPressed: () async {
-                Navigator.of(context).pop();
-                final status = await Permission.location.request();
-                if (status.isGranted) {
-                  _getDeviceLocation();
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Exibe o diálogo de serviço de localização desativado
-  void _showLocationServiceDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Serviço de Localização Desativado'),
-          content: const Text('Por favor, ative o serviço de localização para acessar o mapa.'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Abrir Configurações'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                openAppSettings();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Exibe o pop-up com o nome da música
-  void _onHotspotTap() {
-    _showMusicNamePopup();
-  }
-
-  // Função para exibir o nome da música tocando
-  void _showMusicNamePopup() {
-    final musicName = Provider.of<ProfileProvider>(context, listen: false).currentSongName;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Música Tocando'),
-          content: Text('A música tocando é: $musicName'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Fechar'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Fecha apenas o pop-up
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
-    if (_currentLocation == null) {
-      return Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
-      appBar: null,
-      body: GoogleMap(
-        initialCameraPosition: CameraPosition(
-          target: _currentLocation!,
-          zoom: 15,
-        ),
-        onMapCreated: (controller) {
-          mapController = controller;
-        },
-        markers: Set<Marker>.of(_markers),
-        circles: _circles,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: true,
+      body: Stack(
+        children: [
+          FlutterMap(
+            mapController: mapController,
+            options: MapOptions(
+              initialCenter: _currentLocation ?? LatLng(0.0, 0.0),
+              minZoom: _currentZoom, // Defina o nível de zoom inicial
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                subdomains: const ['a', 'b', 'c'],
+              ),
+              MarkerLayer(
+                markers: _markers,
+              ),
+              CircleLayer(
+                circles: _circleMarkers,
+              ),
+            ],
+          ),
+          // Adicionando os ícones de zoom sem BottomAppBar
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: Column(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.zoom_in),
+                  color: Colors.black, // Cor personalizada para o ícone de zoom in
+                  onPressed: () {
+                    setState(() {
+                      _currentZoom++;
+                    });
+                    mapController.move(_currentLocation!, _currentZoom); // Ajuste do zoom
+                  },
+                ),
+                const SizedBox(height: 10), // Espaço entre os ícones
+                IconButton(
+                  icon: const Icon(Icons.zoom_out),
+                  color: Colors.black, // Cor personalizada para o ícone de zoom out
+                  onPressed: () {
+                    setState(() {
+                      _currentZoom--;
+                    });
+                    mapController.move(_currentLocation!, _currentZoom); // Ajuste do zoom
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

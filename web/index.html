@@ -1,38 +1,64 @@
 <!DOCTYPE html>
 <html lang="pt-br">
   <head>
+    <!-- Base URL for Flutter Web -->
     <base href="$FLUTTER_BASE_HREF">
 
     <meta charset="UTF-8">
     <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-    <meta name="description" content="The first and newest music social media.">
+    <meta name="description" content="A primeira e mais nova rede social musical.">
 
     <!-- iOS meta tags & icons -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="trackonnections">
-    <link rel="apple-touch-icon" href="icons/Icon-192.png">
+    <link rel="apple-touch-icon" href="icons/logo-Trackonnections.png">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="logo-Trackonnetions.png"/>
 
-    <title>trackonnections</title>
+    <!-- Manifest -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- Google Maps API -->
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCdXPkH0L5txsBvmI0FAOepZpMWufrpIRY"
-      defer
-    ></script>
+    <!-- Title of the page -->
+    <title>trackonnections</title>
 
-    <!-- Flutter Web -->
-    <script src="main.dart.js" defer></script>
+    <!-- Meta Tags for Mobile Optimization -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Open Graph Meta Tags for Social Media Sharing -->
+    <meta property="og:title" content="trackonnections - Rede Social Musical">
+    <meta property="og:description" content="A primeira e mais nova rede social musical com interação em tempo real.">
+    <meta property="og:image" content="logo-Trackonnetions.png">
+    <meta property="og:url" content="https://trackonnections.web.app">
+
+    <!-- Twitter Meta Tags for Social Media Sharing -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="trackonnections - Rede Social Musical">
+    <meta name="twitter:description" content="A primeira e mais nova rede social musical com interação em tempo real.">
+    <meta name="twitter:image" content="logo-Trackonnetions.png">
+    <meta name="twitter:site" content="@trackonnections">
+
+    <!-- Add Safari location permissions -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script>
+      // Solicitação de permissão para localização no Safari
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          console.log('Localização obtida com sucesso!', position);
+        }, function(error) {
+          console.log('Erro ao obter localização: ', error);
+          alert("Por favor, permita o acesso à localização no seu dispositivo.");
+        });
+      } else {
+        console.log('Localização não suportada.');
+      }
+    </script>
+
   </head>
   <body>
-    <!-- O mapa irá ocupar toda a altura e largura da tela -->
-    <div id="map" style="height: 100%; width: 100%;"></div>
-
-    <!-- O script do Flutter -->
-    <script src="flutter.js" async></script>
+    <!-- Flutter Web content will be injected here -->
+    <script src="main.dart.js" defer></script>
   </body>
 </html>
