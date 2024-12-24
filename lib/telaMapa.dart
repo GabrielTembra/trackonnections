@@ -2,6 +2,7 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart'; // Importando o pacote location para a geolocalização
+import 'package:permission_handler/permission_handler.dart'; // Importando o permission_handler
 import 'package:provider/provider.dart';
 import 'profile_provider.dart'; // Importe o ProfileProvider
 
@@ -16,6 +17,8 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
   late GoogleMapController mapController;
   LatLng _currentLocation = const LatLng(-23.550520, -46.633308); // Coordenadas iniciais (São Paulo)
   final List<Marker> _markers = [];
+  final Set<Circle> _circles = {}; // Conjunto para armazenar os círculos (Hotspot)
+  late LocationData _locationData;
 
   @override
   void initState() {
@@ -39,36 +42,45 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
   Future<void> _getDeviceLocation() async {
     final Location location = Location();
 
-    bool serviceEnabled;
-    PermissionStatus permissionGranted;
+    // Solicitar permissão de localização usando o permission_handler
+    final status = await Permission.location.request();
 
-    serviceEnabled = await location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) {
-        return; // Serviço de localização desativado
-      }
+    if (status.isDenied) {
+      // Se a permissão for negada, mostra um alerta
+      _showLocationPermissionDialog();
+      return;
     }
 
-    permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) {
-        return; // Permissão negada
-      }
+    if (status.isPermanentlyDenied) {
+      // Se a permissão for permanentemente negada, pede para abrir as configurações
+      openAppSettings();
+      return;
     }
 
-    LocationData currentLocation = await location.getLocation();
+    // Agora que a permissão foi concedida, podemos acessar a localização
+    _locationData = await location.getLocation();
 
     setState(() {
-      _currentLocation = LatLng(currentLocation.latitude!, currentLocation.longitude!);
+      _currentLocation = LatLng(_locationData.latitude!, _locationData.longitude!);
       _markers.clear();
       _markers.add(
         Marker(
           markerId: const MarkerId('trackonnections'),
           position: _currentLocation,
           infoWindow: const InfoWindow(title: 'Trackonnections'),
-          icon: BitmapDescriptor.defaultMarker,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Usando uma cor personalizada para destacar o hotspot
+        ),
+      );
+
+      // Adicionando o círculo para representar a precisão
+      _circles.add(
+        Circle(
+          circleId: CircleId('hotspot-circle'),
+          center: _currentLocation,
+          radius: _locationData.accuracy!, // Precisão do GPS (em metros)
+          fillColor: Colors.blue.withOpacity(0.3), // Cor do preenchimento
+          strokeColor: Colors.blue, // Cor da borda
+          strokeWidth: 2, // Largura da borda
         ),
       );
     });
@@ -80,6 +92,37 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
 
     mapController.animateCamera(
       CameraUpdate.newLatLngZoom(_currentLocation, 15),
+    );
+  }
+
+  // Função para exibir o diálogo de permissão de localização
+  void _showLocationPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Permissão de Localização'),
+          content: const Text('Este app precisa acessar sua localização para exibir o mapa. Você deseja permitir?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Permitir'),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                final status = await Permission.location.request();
+                if (status.isGranted) {
+                  _getDeviceLocation(); // Tentar acessar a localização novamente após a permissão
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -105,7 +148,19 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
           markerId: const MarkerId('trackonnections'),
           position: _currentLocation,
           infoWindow: const InfoWindow(title: 'Trackonnections'),
-          icon: BitmapDescriptor.defaultMarker,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Atualizando o ícone para destacar
+        ));
+
+      // Atualizando o círculo para refletir a nova localização
+      _circles.clear();
+      _circles.add(
+        Circle(
+          circleId: CircleId('hotspot-circle'),
+          center: _currentLocation,
+          radius: 50.0, // Definindo um raio fixo para o exemplo
+          fillColor: Colors.blue.withOpacity(0.3),
+          strokeColor: Colors.blue,
+          strokeWidth: 2,
         ),
       );
     });
@@ -120,6 +175,7 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
     super.build(context); // Chama o método da superclasse para manter o estado
 
     return Scaffold(
+      appBar: null, // Remover a AppBar
       body: GoogleMap(
         initialCameraPosition: CameraPosition(
           target: _currentLocation,
@@ -129,6 +185,7 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
           mapController = controller;
         },
         markers: Set<Marker>.of(_markers),
+        circles: _circles, // Adicionando os círculos ao mapa (Hotspot)
         myLocationEnabled: true,
         myLocationButtonEnabled: true,
       ),

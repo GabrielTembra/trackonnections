@@ -273,54 +273,67 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
                                 ),
                                 _currentlyPlayingTrack!['album']['images'] != null
                                     ? Image.network(
-                                        _currentlyPlayingTrack!['album']['images'][0]['url'])
-                                    : const SizedBox.shrink(),
+                                        _currentlyPlayingTrack!['album']['images'][0]['url'],
+                                        height: 250,
+                                        width: 250,
+                                      )
+                                    : Container(),
                               ],
                             ),
                           )
-                        : const SizedBox.shrink(),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: _playlists.length,
-                        itemBuilder: (context, index) {
-                          final playlist = _playlists[index];
-                          return ListTile(
-                            title: Text(
-                              playlist['name'],
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            leading: playlist['images'].isNotEmpty
-                                ? Image.network(playlist['images'][0]['url'])
-                                : const Icon(Icons.music_note, color: Colors.white),
-                            onTap: () async {
-                              final profileProvider =
-                                  Provider.of<ProfileProvider>(context, listen: false);
-                              await _fetchPlaylistTracks(
-                                  playlist['id'], profileProvider.accessToken!);
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    if (_tracks.isNotEmpty)
+                        : Container(),
+                    if (_selectedPlaylistId == null) // Só exibe a lista de playlists se nenhuma playlist foi selecionada
                       Expanded(
                         child: ListView.builder(
-                          itemCount: _tracks.length,
+                          itemCount: _playlists.length,
                           itemBuilder: (context, index) {
-                            final track = _tracks[index]['track'];
+                            final playlist = _playlists[index];
                             return ListTile(
-                              title: Text(
-                                track['name'],
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              subtitle: Text(
-                                track['artists'][0]['name'],
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                              leading: track['album']['images'].isNotEmpty
-                                  ? Image.network(track['album']['images'][0]['url'])
-                                  : const Icon(Icons.music_note, color: Colors.white),
+                              title: Text(playlist['name']),
+                              subtitle: Text('Tracks: ${playlist['tracks']['total']}'),
+                              leading: playlist['images'].isNotEmpty
+                                  ? Image.network(
+                                      playlist['images'][0]['url'],
+                                      height: 50,
+                                      width: 50,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                              onTap: () {
+                                final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+                                _fetchPlaylistTracks(playlist['id'], profileProvider.accessToken!);
+                              },
                             );
+                          },
+                        ),
+                      ),
+                    if (_selectedPlaylistId != null)
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _tracks.isEmpty ? 1 : _tracks.length, // Exibe mensagem se não houver faixas
+                          itemBuilder: (context, index) {
+                            if (_tracks.isEmpty) {
+                              return Center(
+                                child: Text(
+                                  'Não há músicas na playlist selecionada',
+                                  style: TextStyle(color: Colors.white, fontSize: 18),
+                                ),
+                              );
+                            } else {
+                              return ListTile(
+                                title: Text(_tracks[index]['track']['name']),
+                                subtitle: Text(_tracks[index]['track']['artists'][0]['name']),
+                                onTap: () {
+                                  // Aqui você pode adicionar a funcionalidade para reproduzir a música ao clicar
+                                },
+                                leading: Image.network(
+                                  _tracks[index]['track']['album']['images'][0]['url'],
+                                  height: 50,
+                                  width: 50,
+                                  fit: BoxFit.cover,
+                                ),
+                              );
+                            }
                           },
                         ),
                       ),
