@@ -272,7 +272,7 @@ class _SpotifyAuthScreenState extends State<SpotifyAuthScreen> {
               : Center(
                   child: ElevatedButton(
                     onPressed: _authenticateSpotify,
-                    child: const Text('Authenticate'),
+                    child: const Text('Entrar com o Spotify'),
                   ),
                 ),
     );
