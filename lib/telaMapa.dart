@@ -18,15 +18,15 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
   final List<Marker> _markers = [];
   final List<CircleMarker> _circleMarkers = [];
 
-  double _currentZoom = 12.0; // Zoom inicial
-  final double _minZoom = 3.0; // Zoom mínimo permitido
-  final double _maxZoom = 18.0; // Zoom máximo permitido
+  double _currentZoom = 12.0; 
+  final double _minZoom = 3.0; 
+  final double _maxZoom = 18.0; 
 
   @override
   void initState() {
     super.initState();
     mapController = MapController();
-    _initializeLocation(); // Inicializa a localização assim que a tela for carregada
+    _initializeLocation(); 
   }
 
   Future<void> _initializeLocation() async {
@@ -49,7 +49,7 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
       setState(() {
         _currentLocation = LatLng(position.latitude, position.longitude);
 
-        // Atualiza os marcadores
+        
         _markers.clear();
         _markers.add(
           Marker(
@@ -77,7 +77,7 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
           ),
         );
 
-        // Atualiza os círculos
+        
         _circleMarkers.clear();
         _circleMarkers.add(
           CircleMarker(
@@ -86,11 +86,11 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
             borderColor: Colors.purpleAccent.withOpacity(0.15),
             borderStrokeWidth: 2,
             useRadiusInMeter: true,
-            radius: 100, // Raio em metros
+            radius: 100, 
           ),
         );
 
-        // Move o mapa para a localização atual
+        
         mapController.move(_currentLocation!, _currentZoom);
       });
     } catch (e) {
@@ -103,7 +103,7 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
   void _showMusicDialog() {
     final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
 
-    // Atualiza a música atual no perfil
+ 
     profileProvider.setCurrentlyPlayingTrack(
       profileProvider.currentSongArtist,
       profileProvider.currentSongName,
@@ -154,8 +154,8 @@ class _MusicMapScreenState extends State<MusicMapScreen> with AutomaticKeepAlive
           FlutterMap(
             mapController: mapController,
             options: MapOptions(
-              initialCenter: _currentLocation ?? LatLng(0.0, 0.0), // Corrigido para center
-              initialZoom: _currentZoom, // Corrigido para zoom
+              initialCenter: _currentLocation ?? LatLng(0.0, 0.0),
+              initialZoom: _currentZoom, 
               minZoom: _minZoom,
               maxZoom: _maxZoom,
             ),

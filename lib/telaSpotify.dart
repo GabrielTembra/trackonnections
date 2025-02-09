@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'profile_provider.dart'; // ProfileProvider importado
+import 'profile_provider.dart'; 
 
 class SpotifyAuthScreen extends StatefulWidget {
   const SpotifyAuthScreen({super.key});

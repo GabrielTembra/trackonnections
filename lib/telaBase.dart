@@ -3,11 +3,11 @@ import 'package:trackonnections/telaMapa.dart';
 import 'package:trackonnections/telaPerfil.dart';
 import 'package:trackonnections/telaSpotify.dart';
 import 'package:trackonnections/telaReconhecimento.dart';
-import 'package:trackonnections/profile_provider.dart'; // Importe o ProfileProvider aqui
-import 'dart:typed_data'; // Para manipular a imagem em bytes
-import 'package:shared_preferences/shared_preferences.dart'; // Para SharedPreferences
-import 'dart:convert'; // Para converter base64
-import 'package:provider/provider.dart'; // Importando o Provider
+import 'package:trackonnections/profile_provider.dart'; 
+import 'dart:typed_data'; 
+import 'package:shared_preferences/shared_preferences.dart'; 
+import 'dart:convert'; 
+import 'package:provider/provider.dart'; 
 
 void main() {
   runApp(const TrackonnectionsApp());
@@ -46,7 +46,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
 
-  // Controlador de animação para o efeito de pulsação
+  
   late AnimationController _animationController;
 
   final List<Widget> _screens = [
@@ -60,19 +60,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    // Carregar os dados do perfil usando o provider
+    
     context.read<ProfileProvider>().loadProfileData();
 
-    // Configurar o AnimationController
+    
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true); // Repetir a animação
+    )..repeat(reverse: true); 
   }
 
   @override
   void dispose() {
-    _animationController.dispose(); // Limpar o controlador ao sair
+    _animationController.dispose(); 
     super.dispose();
   }
 
@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
         backgroundColor: const Color(0xFF6A1B9A),
         actions: [
-          // Foto de perfil ou ícone de pessoa
+         
           GestureDetector(
             onTap: () => Navigator.push(
               context,
@@ -116,12 +116,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               backgroundColor: profileProvider.profileColor,
               radius: 20,
               backgroundImage: profileProvider.profileImageBytes != null
-                  ? MemoryImage(profileProvider.profileImageBytes!) // Se houver imagem, exibe ela
+                  ? MemoryImage(profileProvider.profileImageBytes!) 
                   : null,
-              child: profileProvider.profileImageBytes == null // Se não houver imagem, exibe o ícone de pessoa
+              child: profileProvider.profileImageBytes == null 
                   ? const Icon(
                       Icons.person,
-                      color: Colors.white, // Contraste com a cor de fundo
+                      color: Colors.white, 
                       size: 20,
                     )
                   : null,
@@ -158,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             onPressed: () {
               _onItemTapped(index);
               if (index == 2) {
-                context.read<ProfileProvider>().toggleRecording(); // Alternar gravação usando o provider
+                context.read<ProfileProvider>().toggleRecording(); 
               }
             },
           ),

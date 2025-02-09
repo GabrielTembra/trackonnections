@@ -5,9 +5,9 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:provider/provider.dart'; // Para usar o Provider
+import 'package:provider/provider.dart'; 
 import 'package:trackonnections/telaRecorder.dart';
-import 'profile_provider.dart'; // Importando o ProfileProvider 
+import 'profile_provider.dart';  
 
 class CustomizeProfileScreen extends StatefulWidget {
   const CustomizeProfileScreen({super.key});
@@ -65,7 +65,7 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
     await prefs.setString('profile_description', descriptionController.text);
     await prefs.setString('profile_playlist', playlistController.text);
 
-    // Notifica o ProfileProvider sobre as mudanças
+    
     Provider.of<ProfileProvider>(context, listen: false).saveProfileData(
       name: nameController.text,
       description: descriptionController.text,
@@ -92,9 +92,9 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
   }
 
   Future<void> _playLastRecording() async {
-    final recorderState = Provider.of<RecorderState>(context, listen: false); // Obtém o estado do Recorder
+    final recorderState = Provider.of<RecorderState>(context, listen: false); 
     if (recorderState.filePath != null) {
-      await _audioPlayer.play(recorderState.filePath! as Source); // Toca o áudio gravado
+      await _audioPlayer.play(recorderState.filePath! as Source); 
     }
   }
 
@@ -120,31 +120,30 @@ class _CustomizeProfileScreenState extends State<CustomizeProfileScreen> {
     );
   }
 
-  // Função para limpar as informações do perfil e redirecionar para a tela de login
+  
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     
-    // Limpa todos os dados no SharedPreferences (opcional)
+   
     await prefs.clear(); 
 
-    // Remove especificamente o token de acesso
-    await prefs.remove('spotify_token'); // Remove a chave do token
+    
+    await prefs.remove('spotify_token'); 
+   
+    await prefs.remove('user_login'); 
 
-    // Remove o login do usuário
-    await prefs.remove('user_login'); // Remove a chave de login
-
-    // Notifica o ProfileProvider para limpar os dados também
+    
     Provider.of<ProfileProvider>(context, listen: false).saveProfileData(
       name: '',
       description: '',
       playlist: '',
-      profileColor: const Color(0xFF6A1B9A), // Novo roxo
+      profileColor: const Color(0xFF6A1B9A), 
       profileImageBytes: null,
       audioPath: null,
     );
 
     // Navega de volta para a tela de login (ou qualquer outra tela desejada)
-    Navigator.pushReplacementNamed(context, '/login'); // Substitua '/login' pela rota correta para a tela de login
+    Navigator.pushReplacementNamed(context, '/login'); 
   }
 
   Widget _buildProfileImage() {

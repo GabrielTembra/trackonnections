@@ -245,7 +245,7 @@ class AudioPlayerWidget extends StatelessWidget {
               ..src = filePath
               ..controls = true
               ..autoplay = true;
-            html.document.body?.append(audio);  // Reproduzindo o áudio na tela
+            html.document.body?.append(audio);  
           },
         ),
       ],

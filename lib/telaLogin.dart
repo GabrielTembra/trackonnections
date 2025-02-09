@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'telaBase.dart'; // Certifique-se de que a tela base está implementada corretamente
-import 'telaPerfil.dart'; // Tela de personalização de perfil
+import 'telaBase.dart'; 
+import 'telaPerfil.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  // Método para salvar login e senha no Firestore
+  
   Future<void> saveLoginToFirestore(String email, String password) async {
     final firestore = FirebaseFirestore.instance;
 
@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await firestore.collection('users').add({
         'email': email,
         'password': password,
-        'timestamp': FieldValue.serverTimestamp(), // Adiciona um timestamp
+        'timestamp': FieldValue.serverTimestamp(), 
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Método para salvar login e senha no SharedPreferences
+
   Future<void> saveLoginToSharedPreferences(String email, String password) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('email', email);  // Salva o email
@@ -51,11 +51,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF6A1B9A), // Fundo roxo alterado
+      backgroundColor: const Color(0xFF6A1B9A), 
       appBar: AppBar(
-        backgroundColor: const Color(0xFF6A1B9A), // Cor da appBar alterada
+        backgroundColor: const Color(0xFF6A1B9A), 
         elevation: 0,
-        automaticallyImplyLeading: false, // Removendo o ícone de volta
+        automaticallyImplyLeading: false, 
         actions: [
           IconButton(
             icon: const Icon(Icons.person, color: Colors.white),
@@ -143,9 +143,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: emailController,
                     decoration: const InputDecoration(
                       hintText: 'Digite seu Email',
-                      hintStyle: TextStyle(color: Color(0xFF6A1B9A)), // Cor do hintText alterada
+                      hintStyle: TextStyle(color: Color(0xFF6A1B9A)),
                       border: InputBorder.none,
-                      prefixIcon: Icon(Icons.mail, color: Color(0xFF6A1B9A)), // Cor do ícone alterada
+                      prefixIcon: Icon(Icons.mail, color: Color(0xFF6A1B9A)), 
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                     keyboardType: TextInputType.emailAddress,
@@ -161,9 +161,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: passwordController,
                     decoration: const InputDecoration(
                       hintText: 'Digite sua Senha',
-                      hintStyle: TextStyle(color: Color(0xFF6A1B9A)), // Cor do hintText alterada
+                      hintStyle: TextStyle(color: Color(0xFF6A1B9A)), 
                       border: InputBorder.none,
-                      prefixIcon: Icon(Icons.lock, color: Color(0xFF6A1B9A)), // Cor do ícone alterada
+                      prefixIcon: Icon(Icons.lock, color: Color(0xFF6A1B9A)), 
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                     obscureText: true,
@@ -176,13 +176,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     final password = passwordController.text.trim();
 
                     if (email.isNotEmpty && password.isNotEmpty) {
-                      // Salva login e senha no Firestore
+                      
                       await saveLoginToFirestore(email, password);
 
-                      // Salva login e senha no SharedPreferences
+                      
                       await saveLoginToSharedPreferences(email, password);
 
-                      // Navega para a tela principal
+                      
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
@@ -200,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF6A1B9A), // Cor do botão alterada
+                    foregroundColor: const Color(0xFF6A1B9A), 
                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
